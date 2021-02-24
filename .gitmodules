@@ -1,0 +1,18 @@
+[submodule "hw/deps/migen"]
+	path = hw/deps/migen
+	url = https://github.com/m-labs/migen.git
+[submodule "hw/deps/litex"]
+	path = hw/deps/litex
+	url = https://github.com/enjoy-digital/litex.git
+[submodule "hw/deps/litex-boards"]
+	path = hw/deps/litex-boards
+	url = https://github.com/litex-hub/litex-boards.git
+[submodule "hw/deps/pythondata-software-compiler_rt"]
+	path = hw/deps/pythondata-software-compiler_rt
+	url = https://github.com/litex-hub/pythondata-software-compiler_rt.git
+[submodule "hw/deps/valentyusb"]
+	path = hw/deps/valentyusb
+	url = https://github.com/im-tomu/valentyusb.git
+[submodule "sw/tinyusb"]
+	path = sw/tinyusb
+	url = https://github.com/hathach/tinyusb
