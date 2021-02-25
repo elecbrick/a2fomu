@@ -1,16 +1,20 @@
-//╔═══════════════════════════════════════════════════════════════════════════╗
-//║ a2fomu.h - Part of a2fomu - Copyright (c) 2020-2021 Doug Eaton            ║
-//║                                                                           ║
-//║ This file is part of a2fomu which is released under the two clause BSD    ║
-//║ licence.  See file LICENSE in the project root directory or visit the     ║
-//║ project at https://github.com/elecbrick/a2fomu for full license details.  ║
-//╚═══════════════════════════════════════════════════════════════════════════╝
+//
+// a2fomu.h - Part of a2fomu - Copyright (c) 2020-2021 Doug Eaton
+//
+// This file is part of a2fomu which is released under the two clause BSD
+// licence.  See file LICENSE in the project root directory or visit the
+// project at https://github.com/elecbrick/a2fomu for full license details.
+
+// Core operating system definitions
+
+#ifndef _A2FOMU_H_
+#define _A2FOMU_H_
 
 #include <stdio.h>
 #include <stdio.h>
 #include <rtc.h>
 
-// OS Task List - TODO abstract via API so CLI can access without exposing
+// OS Task List - TODO abstract via API so CLI can access without exposing.
 enum task_num {
   tud_task_active = 0,
   tty_task_active,
@@ -22,6 +26,8 @@ enum task_num {
   disk_task_active,
   max_task
 };
+
+// Global performance monitoring statistics.
 extern a2time_t task_runtime[max_task];
 
 // Major Device Types used by stdio. Occupies one byte in FILE structure.
@@ -64,7 +70,13 @@ extern FILE *persistence;
 void persistence_init(void);
 void dump_persistence(void);
 
-// Operating system call to process all other tasks and reset watchdog timer
+// Operating system call allowing a task to pause and let other tasks have a
+// turn. Resets watchdog timer allowing a task to wait an extended amount of
+// time for something external to complete.
 void yield(void);
-// As above but does not reset watchdog timer
+
+// Operating system call allowing a task to pause as above but without
+// affecting watchdor timer.
 void run_task_list(void);
+
+#endif /* _A2FOMU_H_ */
