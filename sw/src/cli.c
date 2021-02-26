@@ -1,10 +1,9 @@
-//╔═══════════════════════════════════════════════════════════════════════════╗
-//║ cli.c - Part of a2fomu - Copyright (c) 2020-2021 Doug Eaton               ║
-//║                                                                           ║
-//║ This file is part of a2fomu which is released under the two clause BSD    ║
-//║ licence.  See file LICENSE in the project root directory or visit the     ║
-//║ project at https://github.com/elecbrick/a2fomu for full license details.  ║
-//╚═══════════════════════════════════════════════════════════════════════════╝
+//
+// cli.c - Part of a2fomu - Copyright (c) 2020-2021 Doug Eaton
+//
+// This file is part of a2fomu which is released under the two clause BSD
+// licence.  See file LICENSE in the project root directory or visit the
+// project at https://github.com/elecbrick/a2fomu for full license details.
 
 #include <stdio.h>
 #include <stdint.h>
@@ -108,10 +107,6 @@ void cli_catalog(void) {
   }
   printf("ino   size name\n");
   while((file=readdir(root))) {
-    //if(!file) {
-    //  // Last file already processed
-    //  break;
-    //}
     if(file->attributes&e_volume) {
       // Ignore volume labels and long filenames.
       continue;
@@ -144,11 +139,11 @@ void cli_clock(void) {
     speed = strtok(NULL, ", ");
   }
   switch(*speed&0xDF) {
-    case 0:   break;    // No units, use raw value
+    case 0:   break;    // No units, use raw value as delay slots.
     case 'M': if(clock<sizeof(clockM))
                 clock = clockM[clock];
               break;
-    //case 'K': clock
+    //case 'K':         // kHz should be allowed.
     default:  printf("Units must be M or blank\n");
               return;
   }
@@ -169,11 +164,7 @@ void cli_clock(void) {
 }
 
 void cli_dfu(void) {
-#ifdef CSR_REBOOT_BASE
   reboot_ctrl_write(0xac);
-#else
-  printf("Reboot disabled in simulation but try this: \\x e0006000 ac");
-#endif
 }
 
 void cli_echo(void) {
@@ -196,10 +187,10 @@ void cli_hex(void) {
   if(token) {
     // TODO FIXME XXX addr must be a multiple of 4 or else address exception
     // will occur. This is a silent patch that drops the 2 bits XXX FIXME TODO
+    // and returns 4 bytes.
     addr = atox(token) & 0xfffffffc;
     token = strtok(NULL, ", ");
     //fprintf(stderr, "d{%s}", token);
-    // 1345216 Exception 4 at 100044ec referencing 10000012
     if(token) {
       data = atox(token);
       printf("poke 0x%08x, 0x%08x\n", addr, data);
@@ -216,11 +207,9 @@ void cli_fp(void) {
 }
 
 void cli_go(void) {
-#ifdef CSR_APPLE2_BASE
   // Take A2 out of reset
   uint32_t control = apple2_control_read();
   apple2_control_write(control & ~(1<<CSR_APPLE2_CONTROL_RESET_OFFSET));
-#endif
 }
 
 void cli_int(void) {
@@ -292,10 +281,8 @@ void cli_persistence(void) {
 
 // Place A2 in reset
 void cli_reset(void) {
-#ifdef CSR_APPLE2_BASE
   uint32_t control = apple2_control_read();
   apple2_control_write(control | (1<<CSR_APPLE2_CONTROL_RESET_OFFSET));
-#endif
 }
 
 void cli_scroll(void) {
@@ -359,17 +346,15 @@ void cli_times(void) {
   for(task=0; task<max_task; task++) {
     total += task_runtime[task];
   }
-  #ifdef ISR_TIME_TRACKING
   total += isr_runtime;
-  #endif
   for(task=0; task<max_task; task++) {
     pct=(100*task_runtime[task]+50)/total; ///total; TODO compiles to ebreak
     printf("%5s %2u%% %u\n", task_name[task],
         (unsigned)pct, (unsigned)(task_runtime[task]));
   }
-  #ifdef ISR_TIME_TRACKING
-  printf("ISR   %2d%% %u\n", (int)((100*isr_runtime+50)/total), (int)(isr_runtime));
-  #endif
+  if(isr_runtime>0) {
+    printf("ISR   %2d%% %u\n", (int)((100*isr_runtime+50)/total), (int)(isr_runtime));
+  }
   printf("Time  --- %d\n", (unsigned)rtc_read()/1000); // (int)(total>>32)
   printf("Total Interrupts: %d Time: %08x %08x\n", isr_count,
       ((q2l)total).l[1], ((q2l)total).l[0]);
@@ -409,14 +394,7 @@ void cli_zero(void) {
     }
     fprintf(persistence, "memset a=%08x, v=%d, s=%x\n",
         (unsigned)(A2RAM_BASE+start), 0, end-start);
-#define USE_MEMSET
-#ifdef USE_MEMSET
     memset((void*)(A2RAM_BASE+start), 0, end-start);
-#else
-    for( ; start>=end; start+=4) {
-      *(uint32_t*)(A2RAM_BASE+start) = 0;
-    }
-#endif
   } else {
     printf("A2 or Persistence?");
   }
