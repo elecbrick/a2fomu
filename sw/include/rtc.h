@@ -27,5 +27,4 @@ void timer_isr(void);
 a2time_t activetime(void);
 void rtc_init(void);
 
-#endif
 #endif /* _RTC_H_ */

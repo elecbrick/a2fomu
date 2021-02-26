@@ -1,10 +1,9 @@
-//╔═══════════════════════════════════════════════════════════════════════════╗
-//║ main.c - Part of a2fomu - Copyright (c) 2020-2021 Doug Eaton              ║
-//║                                                                           ║
-//║ This file is part of a2fomu which is released under the two clause BSD    ║
-//║ licence.  See file LICENSE in the project root directory or visit the     ║
-//║ project at https://github.com/elecbrick/a2fomu for full license details.  ║
-//╚═══════════════════════════════════════════════════════════════════════════╝
+//
+// main.c - Part of a2fomu - Copyright (c) 2020-2021 Doug Eaton
+//
+// This file is part of a2fomu which is released under the two clause BSD
+// licence.  See file LICENSE in the project root directory or visit the
+// project at https://github.com/elecbrick/a2fomu for full license details.
 
 #include <sys/types.h>
 #include <stdlib.h>
@@ -296,12 +295,10 @@ void tty_task(void) {
           in_esc = ESC_START;
         } else if(c=='\22' || c=='\0') {
           // NUL / Control-R: Send reset pulse, activate and release reset
-#ifdef CSR_APPLE2_BASE
           // Take A2 out of reset
           uint32_t control = apple2_control_read();
           apple2_control_write(control | (1<<CSR_APPLE2_CONTROL_RESET_OFFSET));
           apple2_control_write(control & ~(1<<CSR_APPLE2_CONTROL_RESET_OFFSET));
-#endif
         } else if(c=='\b' || c=='\x7f') {
           // Backspace and Delete become Left Arrow
           rc=putc(0x88, stdin);
@@ -382,7 +379,6 @@ void tud_cdc_rx_cb(uint8_t itf) {
 }
 
 void keyboard_task(void) {
-#ifdef CSR_APPLE2_BASE
   int c;
   // Do nothing if character has already been sent
   if(!apple2_strobe_read()) {
@@ -392,7 +388,6 @@ void keyboard_task(void) {
       apple2_keyboard_write(c|0x80);
     }
   }
-#endif
 }
 
 // Convert an integer in the range 0-99 into a 1 or 2 digit string
@@ -417,7 +412,6 @@ void error(const char *msg) {
 }
 
 void video_task(void) {
-#ifdef CSR_APPLE2_BASE
   static int vid;
   static char space_supress;
   // Pack these variables into a single memory access
@@ -753,24 +747,22 @@ void video_task(void) {
       }
     }
   }
-#endif
 }
 
 void init(void) {
   //rgb_init();                   // Show successful handoff to main program
-  rgb_mode_error();             //   immediately
+  //rgb_mode_error();             //   immediately
   persistence_init();           // Recover or initialize error logging
   usb_pullup_out_write(0);      // Disable USB to allow new enumeration
   irq_setmask(0);               // Unmask (enable) all interrupts
   irq_setie(1);
-#ifndef SIMULATION
+#if 0
   msleep(1000);                 // Reconfigures timer - needs interupts enabled
 #endif
-  rgb_mode_done();              // Pause to let host disconnect USB device
+  //rgb_mode_done();              // Pause to let host disconnect USB device
   morse_init(7,0,300);
 #ifndef SIMULATION
-  putchar('A');                 // Blink A2 on LED at powerup
-  putchar('2');
+  puts("A2");                 // Blink A2 on LED at powerup
 #endif
   tusb_init();
   disk_init();
@@ -801,14 +793,7 @@ void run_task(void(*task)(void), enum task_num num) {
   }
 }
 
-
-
-//#define OLD_TASK_DISPATCH
-
-
-
 void run_task_list(void) {
-  #ifndef OLD_TASK_DISPATCH
   // Generic FOMU operating system tasks
   run_task(tty_task, tty_task_active);
   // TODO make LED task generic adding a Morse Code mode
@@ -819,57 +804,6 @@ void run_task_list(void) {
   run_task(keyboard_task, keyboard_task_active);
   run_task(video_task,    video_task_active);
   run_task(disk_task,     disk_task_active);
-  #else
-  if(!(active_tasks & tud_task_active)) {
-    active_tasks|=tud_task_active;
-    //#ifdef SIMULATION
-    // Check the HW register should the interrupts be having issues in sim
-    //dcd_int_handler(0); // Doug TODO Was this causing the prob? FIXME
-    //#endif
-    tud_task();         // tinyusb device mode
-    active_tasks&=~tud_task_active;
-  }
-  if(!(active_tasks & tty_task_active)) {
-    active_tasks|=tty_task_active;
-    tty_task();         // transfer stdin and stdout via USB CDC
-    active_tasks&=~tty_task_active;
-  }
-  if(!(active_tasks & led_task_active)) {
-    active_tasks|=led_task_active;
-    //led_task();         // flash lights as required
-    morse_task();         // flash lights as required
-    active_tasks&=~led_task_active;
-  }
-  if(!(active_tasks & touch_task_active)) {
-    // TODO write the task to read FOMU buttons
-    active_tasks|=touch_task_active;
-    //touch_task();       // interpret key presses and place them in input buffer
-    active_tasks&=~touch_task_active;
-  }
-  if(!(active_tasks & cli_task_active)) {
-    active_tasks|=cli_task_active;
-    // TODO break this out of tty task
-    //cli_task();         // respond to local configuration and debug commands
-    active_tasks&=~cli_task_active;
-  }
-
-  // Application specific tasks
-  if(!(active_tasks & keyboard_task_active)) {
-    active_tasks|=keyboard_task_active;
-    keyboard_task();    // transfer data from stdin to A2 keyboard strobe
-    active_tasks&=~keyboard_task_active;
-  }
-  if(!(active_tasks & video_task_active)) {
-    active_tasks|=video_task_active;
-    video_task();       // transfer screen buffer to stdout
-    active_tasks&=~video_task_active;
-  }
-  if(!(active_tasks & disk_task_active)) {
-    active_tasks|=disk_task_active;
-    disk_task();      // emulate disk drive both in flash and on host
-    active_tasks&=~disk_task_active;
-  }
-  #endif
 }
 
 void yield(void) {
