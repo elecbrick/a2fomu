@@ -74,15 +74,18 @@ the language card it thinks is installed.
 ## Quick Start
 
 1. Install the [Fomu
-toolchain](https://github.com/im-tomu/fomu-toolchain/releases/latest).
-2. Insert a new Fomu into a USB port on your laptop, desktop or Raspberry Pi.
-3. Type:
+toolchain](https://github.com/im-tomu/fomu-toolchain/releases/latest) and
+ensure the executable directory is in your PATH.
+2. Clone this project to grab pre-built binaries.
+3. Insert a new Fomu into a USB port on your laptop, desktop or Raspberry Pi.
+4. From this project directory, type:
 ```
-make
+$ make RELEASE=1.0 flash
+$ screen /dev/ttyACM0
 ```
-4. Connect to the new serial device using PuTTY or "screen /dev/ttyACM0" on
-   Linux.
-5. You should see the familiar ']' prompt of the Basic interpreter.
+5. You should see the familiar ']' prompt of the Basic interpreter. At this
+   point it is possible to copy emulator disk images onto the new flash drive
+   that was just installed.
 
 This will first build the required software for the runtime executable as well
 as the second and third stage boot loaders. After this, it will build the FPGA
@@ -337,5 +340,17 @@ make -C hw flash
 ```
 
 ## Credits / Disclaimers
+
+Fomu:
+
+Foboot:
+
+TinyUSB:
+
+ValentyUSB:
+
+LiteX:
+
+Migen:
 
 Apple, Apple II, and Applesoft are registered trademarks of Apple Computer.

@@ -1,0 +1,5 @@
+*.swp
+*~
+sw/src/.obj
+sw/src/a2runtime.*
+tags

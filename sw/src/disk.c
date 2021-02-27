@@ -12,19 +12,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
-#include <tusb.h>
-#include <time.h>
-#include <disk.h>
-#include <generated/soc.h>
-#include <generated/mem.h>
-#include <usb.h>
-#include <rgb.h>
-#include <rtc.h>
-#include <crc.h>
 #include <a2fomu.h>
-#include <morse.h>
+#include <tusb.h>
+#include <disk.h>
 #include <flash.h>
+#include <generated/mem.h>
+#include <crc.h>
 
 #define FAST_PERFMON
 #include <perfmon.h>

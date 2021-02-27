@@ -17,7 +17,6 @@
 #include <bsp/board.h>
 #include <generated/soc.h>
 #include <generated/mem.h>
-#include <usb.h>
 #include <rgb.h>
 #include <rtc.h>
 #include <cli.h>
