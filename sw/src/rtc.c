@@ -11,7 +11,39 @@
 #include <irq.h>                // Risc-V CPU internal privileged CSR registers
 #include <csr-defs.h>           // Risc-V CPU internal privileged CSR registers
 #include <generated/csr.h>      // LiteX SoC user CSR registers
-//#include "fomu.h"
+
+// There are two different methods available for keeping time in the SoC
+// containing LiteX and Risc-V. A timer module with interrupt is provided
+// that is used as a milisecond counter primarily for the Morse Code module.
+//
+// Additionally, there is a 64-bit counter in a special register in the Risc-V
+// architecture definition that is not manditory. If this register is present,
+// the process of reading a coherent time is simplified by not reqireing
+// interrupts to be disabled. However, the 64-bit counter can only be read
+// 32-bits at a time and there could be a wrap between reads. Thus, the means
+// of returning consistent values requires reading the high order word before
+// and after reading the low order word. If the two values are identical, then
+// the whole 64-bit number is consistent. If the two halves are different, then
+// a carry into the upper bits occurred and the lower bits should be read again.
+// There is no need to read the upper bits again as a wrap only occurs about
+// once every five minutes given the core is running at 12MHz.  This logic is
+// optional in the Vex Risc-V processor. There are two 64-bit registers that are
+// either both present or both removed from the design at the same time. It
+// takes 128 logic elements just for the flip-flops needed for these two
+// registers plus anciliary decoding logic. A design that is tight on space in
+// the 5000 logic element ice5kup FPGA could see this as wasting 2.5% of the
+// available logic and chose to disable these counters.
+//
+// The timer needs to follow a similar methodology; however, this time there is
+// the additional overhead of requiring interrupts to be disabled first. When
+// the timer expires, an interrupt fires and the interrupt handler resets the
+// timer and increments the milisecond counter that is kept by software. If
+// interrupts are not disabled, a race condition could occur that would result
+// in the loss of a tick.
+
+#ifndef RISCV_CSR_MCYCLE
+#define RISCV_CSR_MCYCLE
+#endif
 
 //#define RTC_FREQUENCY (CONFIG_CLOCK_FREQUENCY/4)
 #define RTC_FREQUENCY (CONFIG_CLOCK_FREQUENCY)

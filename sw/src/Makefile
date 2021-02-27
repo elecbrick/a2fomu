@@ -163,7 +163,8 @@ TINYUSB_SOURCE += \
 	class/cdc/cdc_device.c \
 	class/msc/msc_device.c \
 	class/usbtmc/usbtmc_device.c \
-	class/vendor/vendor_device.c
+	class/vendor/vendor_device.c \
+	portable/$(VENDOR)/$(CHIP_FAMILY)/dcd_eptri.c
 
 # C source
 SRC_C += $(wildcard *.c) $(wildcard ../third_party/libbase/*.c)
@@ -212,6 +213,12 @@ $(BUILD)/$(PROJECT).bin: $(BUILD)/$(PROJECT).elf
 $(BUILD)/$(PROJECT).hex: $(BUILD)/$(PROJECT).elf
 	@echo CREATE $@
 	$(QUIET)$(OBJCOPY) -O ihex $^ $@
+
+# TinyUSB needs to find <csr.h> but LiteX needs to find <generated/csr.h>
+$(BUILD)/obj/$(TINYUSB)/src/portable/$(VENDOR)/$(CHIP_FAMILY)/dcd_eptri.o: \
+	CFLAGS += -I$(if $(RELEASE), \
+		../../release/$(RELEASE)/include/generated/, \
+		../../hw/build/software/include/generated/)
 
 # Set vpath to point to the top of the tree so that the source files can be
 # located. This scheme enables a single build rule to compile all .c files.
