@@ -96,7 +96,7 @@ else
   CFLAGS += -Os
 endif
 
-LD_DIR     := ld
+LD_DIR     := ../ld
 LDSCRIPT   := $(LD_DIR)/linker.ld
 ifdef LOAD_RAM_ADDR
 LDREGIONS  := $(LD_DIR)/regions_ram.ld

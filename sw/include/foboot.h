@@ -14,12 +14,13 @@
 
 // Magic numbers used by Foboot bootloader.
 
-#define BOOTFLAGS_MAGIC 0xb469075a
-#define RAMBOOT_MAGIC   0x17ab0f23
-#define FBM_MAGIC       0x032bd37d
-#define AUTOBOOT_MAGIC  0x4a6de3ac
-#define BITSTREAM_1     0x6e99aa7f
-#define BITSTREAM_2     0x7eaa997e
+#define BOOTFLAGS_MAGIC   0xb469075a
+#define FOBOOT_MAIN_MAGIC 0x032bd37d
+#define BOOSTER_MAGIC     0xfaa999b1
+#define RAMBOOT_MAGIC     0x17ab0f23
+#define AUTOBOOT_MAGIC    0x4a6de3ac
+#define BITSTREAM_1       0x6e99aa7f
+#define BITSTREAM_2       0x7eaa997e
 
 // The following options exist in the boot flags bitfield:
 #define QPI_EN       0x01   // Enable QPI mode on the SPI flash
