@@ -1,4 +1,6 @@
 INCLUDE output_format.ld
+INCLUDE regions.ld
+
 ENTRY(_start)
 
 __DYNAMIC = 0; /* shared dynamic libraries not supported */
