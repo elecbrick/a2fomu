@@ -1,7 +1,7 @@
 INCLUDE output_format.ld
 ENTRY(_start)
 
-__DYNAMIC = 0;
+__DYNAMIC = 0; /* shared dynamic libraries not supported */
 
 SECTIONS
 {
@@ -21,6 +21,9 @@ SECTIONS
 		*(.rodata1)
 		*(.srodata)
 		/*. = ALIGN(4); */
+                /* TODO Could this section size be a non-integral number of
+                 * words without this? If so, the loader in crt0 will trap
+                 * with misaligned access when copying */
 		_erodata = .;
 	} > rom
 

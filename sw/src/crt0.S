@@ -1,15 +1,24 @@
 //
-// crt0-rgbraw.S - Part of a2fomu - Copyright (c) 2020-2021 Doug Eaton
+// crt0.S - Part of a2fomu - Copyright (c) 2020-2021 Doug Eaton
 //
 // This file is part of a2fomu which is released under the two clause BSD
 // licence.  See file LICENSE in the project root directory or visit the
 // project at https://github.com/elecbrick/a2fomu for full license details.
 
-.global main
-.global isr
-
 //#include "rgb.S"
 #include <foboot.h>
+
+#ifndef CRT0_PREFIX
+#define CRT0_PREFIX
+#endif
+
+#define PASTER(x,y) x ## y
+#define EVALUATOR(x,y)  PASTER(x,y)
+#define NAME(fun) EVALUATOR(fun, VARIABLE)
+#define PREFIX(x) EVALUATOR(CRT0_PREFIX, x)
+
+.global PREFIX(main)
+.global PREFIX(isr)
 
 .section .text.start
 .global _start
@@ -97,7 +106,7 @@ trap_entry:
   sw   x30, -15*4(sp)
   sw   x31, -16*4(sp)
   addi sp, sp, -16*4    // Link stack frame
-  call isr              // Call C routine
+  call PREFIX(isr)      // Call C routine
   lw   x1 , 15*4(sp)    // Restore registers
   lw   x5,  14*4(sp)
   lw   x6,  13*4(sp)
@@ -173,7 +182,7 @@ data_loop:
   csrw  mie, a0
 
   // Program enviornment initialized as required by standard C. Hand off to C.
-  call  main
+  call  PREFIX(main)
 
   // Prevent machine fault or worse should main return.
 infinite_loop:

@@ -147,12 +147,11 @@ LFLAGS := $(CFLAGS) $(ADD_LFLAGS) -L$(LD_DIR) \
 # Flags that help with debug. Note that --noinhibit-exec breaks make by
 # producing a file hiding any errors. The map and symbol cross reference
 # options clearly show how memory is being used.
-LFLAGS += -Wl,--noinhibit-exec \
-	  -Wl,-Map=$(PROJECT).map \
+LFLAGS += -Wl,-Map=$(PROJECT).map \
 	  -Wl,-cref
-
 # Other loader flags not currently used:
 #  -fshort-enums is not used.  enums that appear in structs use pack attribute.
+#         -Wl,--noinhibit-exec
 
 # Source files used from the TinyUSB package, releative to TINYUSB/src
 TINYUSB_SOURCE += \
@@ -184,7 +183,7 @@ $(info LFLAGS $(LFLAGS)) $(info )
 $(info ASFLAGS $(ASFLAGS)) $(info )
 endif
 
-OBJ += $(addprefix $(BUILD)/obj/, $(SRC_S:.S=.o))
+#OBJ += $(addprefix $(BUILD)/obj/, $(SRC_S:.S=.o))
 OBJ += $(addprefix $(BUILD)/obj/, $(SRC_C:.c=.o))
 OBJ_DIRS = $(sort $(dir $(OBJ)))
 $(OBJ): | $(OBJ_DIRS)
@@ -194,23 +193,44 @@ $(OBJ_DIRS):
 # The only standard library functions used are the libc versions of
 # memset and memcpy. These have been extracted and placed in libmemory
 # ensuring no other functions are unexpectedly picked up from libc
-# The gcc lib contains 64-bit math multiplication and division.
+# The libgcc library contains 64-bit math multiplication and division used
+# by the CLI.
 #LIBS += -lgcc -lm -lnosys -lc
 LIBS += -L../lib -lmemory -lgcc
 
 # Set all as default goal
 .DEFAULT_GOAL := all
-all: $(BUILD)/$(PROJECT).bin $(BUILD)/$(PROJECT).hex size
+# All includes the main program and its helper programs
+EXTRA = bios fbms
+#EXTRA += $(addsuffix _$(PROJECT), $(EXTRA_ROOT))
+ALL   = $(PROJECT) $(EXTRA)
+.PHONY:	$(ALL)
+all:	$(ALL)
 
-$(BUILD)/$(PROJECT).elf: $(OBJ)
+#$(PROJECT): CRT0_OBJ := $(BUILD)/obj/crt0.o
+#bios:       CRT0_OBJ := $(BUILD)/obj/bios_crt0.o
+#fbms:       CRT0_OBJ := $(BUILD)/obj/fbms_crt0.o
+fbms:	    ASFLAGS += -DSKIP_INIT
+
+$(ALL): %: $(BUILD)/%.bin $(BUILD)/%.hex size
+
+$(BUILD)/$(PROJECT).elf: $(OBJ) $(BUILD)/obj/crt0.o
 	@echo LINK $@
 	$(QUIET)$(CC) -o $@ $(LFLAGS) $^ -Wl,--start-group $(LIBS) -Wl,--end-group
 
-$(BUILD)/$(PROJECT).bin: $(BUILD)/$(PROJECT).elf
+$(BUILD)/bios.elf: $(BUILD)/obj/bios_crt0.o $(OBJ)
+	@echo LINK $@
+	$(QUIET)$(CC) -o $@ $(LFLAGS) $^ -Wl,--start-group $(LIBS) -Wl,--end-group
+
+$(BUILD)/fbms.elf: $(BUILD)/obj/fbms_crt0.o $(OBJ)
+	@echo LINK $@
+	$(QUIET)$(CC) -o $@ $(LFLAGS) $^ -Wl,--start-group $(LIBS) -Wl,--end-group
+
+$(BUILD)/%.bin: $(BUILD)/%.elf
 	@echo CREATE $@
 	$(QUIET)$(OBJCOPY) -O binary $^ $@
 
-$(BUILD)/$(PROJECT).hex: $(BUILD)/$(PROJECT).elf
+$(BUILD)/%.hex: $(BUILD)/%.elf
 	@echo CREATE $@
 	$(QUIET)$(OBJCOPY) -O ihex $^ $@
 
@@ -235,8 +255,13 @@ $(BUILD)/obj/%.o: %.c
 # ASM sources with .S extenstion
 vpath %.S . ..
 $(BUILD)/obj/%.o: %.S
-	@echo AS $(notdir $@)
-	$(QUIET)$(CC) -x assembler-with-cpp $(ASFLAGS) -c -o $@ $<
+	@echo ASgen $(notdir $@)
+	$(QUIET)$(CC) -x assembler-with-cpp $(ASFLAGS) -DCRT0_PREFIX= -c -o $@ $<
+
+# Three programs each need their own version of main() so parameterize crt0
+$(BUILD)/obj/%crt0.o: crt0.S  $(warning Prereq %crt0.o $(CRT0_OBJ))
+	@echo AScrt0 $(notdir $@)
+	$(QUIET)$(CC) -x assembler-with-cpp $(ASFLAGS) -DCRT0_PREFIX=$(subst crt0.o,,$(notdir $@)) -c -o $@ $<
 
 size: $(BUILD)/$(PROJECT).elf
 	-@echo ''
