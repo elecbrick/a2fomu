@@ -1,19 +1,21 @@
 INCLUDE output_format.ld
-INCLUDE regions.ld
 
 ENTRY(_start)
 
-__DYNAMIC = 0; /* shared dynamic libraries not supported */
+prog_off = DEFINED(prog_off) ? prog_off : 0;
+LOAD_RAM_OFFSET = DEFINED(LOAD_RAM_OFFSET) ? LOAD_RAM_OFFSET : 0;
+
 
 SECTIONS
 {
 	.text :
 	{
+                . += prog_off;  /* Use specific location in ROM/Flash */
 		_ftext = .;
 		*(.text.start)
 		*(.text .stub .text.* .gnu.linkonce.t.*)
 		_etext = .;
-	} > rom
+	} > romem
 
 	.rodata :
 	{
@@ -22,15 +24,15 @@ SECTIONS
 		*(.rodata .rodata.* .gnu.linkonce.r.*)
 		*(.rodata1)
 		*(.srodata)
-		/*. = ALIGN(4); */
-                /* TODO Could this section size be a non-integral number of
-                 * words without this? If so, the loader in crt0 will trap
-                 * with misaligned access when copying */
+                /* Section size must be an integral number of words otherwise */
+                /* crt0 will trap with misaligned access when copying data */
+		. = ALIGN(4);
 		_erodata = .;
-	} > rom
+	} > romem
 
 	.data : AT (ADDR(.rodata) + SIZEOF (.rodata))
 	{
+		. += LOAD_RAM_OFFSET;  /* Define specific offset in RAM */
 		. = ALIGN(4);
 		_fdata = .;
 		*(.data .data.* .gnu.linkonce.d.*)
@@ -38,7 +40,7 @@ SECTIONS
 		_gp = ALIGN(16);
 		*(.sdata .sdata.* .gnu.linkonce.s.* .sdata2 .sdata2.*)
 		_edata = ALIGN(16); /* Make sure _edata is >= _gp. */
-	} > sram
+	} > ram
 
 	.bss :
 	{
@@ -53,7 +55,7 @@ SECTIONS
 		. = ALIGN(4);
 		_ebss = .;
 		_end = .;
-	} > sram
+	} > ram
 }
 
 PROVIDE(_fstack = ORIGIN(sram) + LENGTH(sram) - 4);
