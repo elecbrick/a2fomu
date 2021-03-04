@@ -16,3 +16,6 @@
 [submodule "sw/tinyusb"]
 	path = sw/tinyusb
 	url = https://github.com/hathach/tinyusb
+[submodule "hw/rtl/verilog-6502"]
+	path = hw/rtl/verilog-6502
+	url = https://github.com/Arlet/verilog-6502.git

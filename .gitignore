@@ -4,3 +4,4 @@ sw/src/.obj
 sw/src/a2runtime.*
 tags
 /hw/build/
+__pycache__/
