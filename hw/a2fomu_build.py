@@ -372,11 +372,11 @@ class BaseSoC(SoCCore, AutoDoc):
             else:
                 # ROM consumes a large quantity of the limited EBR block RAM
                 # 1 KB ROM that just initializes flash and jumps to it
-                bios_size = 0x3000   # 12kB max size
-                bios_size = 0x0800   # 2kB bootloader
+                bios_size = 0x3000   # 12kB max size using all ebr
+                bios_size = 0x2400   # 9kB
+                bios_size = 0x2000   # 8kB foboot failsafe size
                 bios_size = 0x1000   # 4kB bootloader
-                bios_size = 0x2400   # 9kB uses all available ebr
-                bios_size = 0x2000   # 8kB foboot
+                bios_size = 0x0800   # 2kB bootloader
             if boot_source == "rand":
                 kwargs['cpu_reset_address'] = 0
                 self.submodules.random_rom = RandomFirmwareROM(bios_size)
@@ -569,7 +569,7 @@ def make_multiboot_header(filename, boot_offsets=[160]):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Build Fomu Main Gateware")
+        description="Build A2Fomu Main Gateware")
     parser.add_argument(
         "--boot-source", choices=["spi", "rand", "bios"], default="rand",
         help="where to have the CPU obtain its executable code from"
@@ -582,7 +582,7 @@ def main():
         # The only difference between revisions is LED color so default to
         # production version
         "--revision", choices=["evt", "dvt", "pvt", "hacker"], default="pvt",
-        help="build foboot for a particular hardware revision"
+        help="build a2fomu for a particular hardware model"
     )
     parser.add_argument(
         "--sim", help="build gateware optimized for simulation", action="store_true"
@@ -701,13 +701,13 @@ def main():
         vns = builder.build(run=False)
         soc.do_exit(vns)
         print("""Simulation build complete.  Output files:
-    {}/gateware/dut.v               Source Verilog file. Run this under Cocotb.
-""".format(output_dir))
+    build/gateware/dut.v               Run this Verilog file under Cocotb.
+""")
         return
 
     vns = builder.build()
     soc.do_exit(vns)
-    lxsocdoc.generate_docs(soc, "build/documentation/", project_name="Fomu Usermode", author="Elecbrick")
+    lxsocdoc.generate_docs(soc, "build/documentation/", project_name="A2Fomu", author="Elecbrick")
 
     if not args.document_only:
         make_multiboot_header(os.path.join(output_dir, "gateware", "multiboot-header.bin"),
@@ -722,7 +722,7 @@ def main():
                     top_multiboot_file.write(top)
 
         print(
-    """Foboot build complete.  Output files:
+    """A2Fomu build complete.  Output files:
     build/gateware/top.bin             Bitstream file. Use dfu-util to load.
     build/gateware/top-multiboot.bin   Multiboot-enabled bitstream file. May be
     used with Booster to replace failsafe gateware. Caution: not reccommended

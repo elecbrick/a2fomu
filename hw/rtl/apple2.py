@@ -53,6 +53,7 @@ class Apple2(Module, AutoCSR):
         self.control = CSRStorage(fields=[
             CSRField("Reset", reset=1 if synthesis else 0,  # auto-start in sim
                 description="6502 Reset line - 1: Reset Asserted, 0: Running"),
+            CSRField("RWROM", size=1, description="Allow writes to ROM"),
             #CSRField("Pause", description="Halt processor allowing stepping"),
             #CSRField("Step",  description="Single step 6502 one clock cycle"),
             #CSRField("NMI", size=1, description="Non-maskable interrupt"),
@@ -548,44 +549,3 @@ class Apple2(Module, AutoCSR):
             ),
 
         ]
-
-'''
-Alternate video implementation that keeps dirty bits with the frame buffer.
-This does not stream in-order as needed for Morse output
-
-        #frame_buffer = Signal(8)[1024]
-        #fb_dirty = Signal(1024)
-        #fb_read_ptr = Signal(10)
-        #fb_next_read = Signal(10)
-        #dirty_count = Signal(10)
-        #dirty_write = Signal()
-        #dirty_read = Signal()
-
-        # Old way async
-            dirty_write.eq(fbsel and fb_w),
-            dirty_read.eq(self.screen.we and self.screen.Valid),
-            self.screen.Character.eq(frame_buffer[fb_read_ptr]),
-            self.screen.Position.eq(fb_read_ptr),
-            self.screen.More.eq(dirty_count > 1),
-            self.screen.Move.eq(fb_read_ptr == fb_read_prev + 1),
-            self.screen.Valid.eq(fb_read_valid),
-
-        # Old way sync
-            If(fbsel,
-                If(fb_w
-                    # Write to frame buffer - store character and mark dirty
-                    frame_buffer[addr[0:10]].eq(dout),
-                    dirty[addr[0:10]].eq(1),
-                ).Else(
-                    # Read from frame buffer - mark potential scroll candidate
-                    scroll.eq(1)
-                ),
-            ),
-            If(dirty_write & !dirty_read,
-                dirty_count.eq(dirty_count+1),
-            ),
-            If(dirty_read & !dirty_write,
-                dirty_count.eq(dirty_count-1),
-            ),
-            fb_read_ptr.eq(),
-'''
