@@ -285,8 +285,13 @@ Building the software requires:
 
 - Locked blocks are unchaged. Official foboot failsafe image and coldboot
 vectors are used.
-- Flash is erased in 4kB chunks. 
-- 
+- Flash is erased in 4kB chunks so all updates are in units of 4kB.
+- 25% of the flash is kept for the failsafe and A2Fomu gateware as well as the
+runtime, secondary bootstrap and reserved spaces for libraries.
+- 75% of the flash is formatted as a FAT filesystem allowing A2Fomu to serve as
+a USB flash drive. Disk images may be dragged and dropped into this
+device and then mounted for use by the emulator and scripts may be copied that
+can execute CLI command on the control processor.
 
 ## Troubleshooting
 
