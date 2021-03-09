@@ -33,7 +33,10 @@ static enum {
 
 void rgb_init(void) {
     // Turn on the RGB block and current enable, as well as enabling led control
-    rgb_ctrl_write((1 << 0) | (1 << 1) | (1 << 2));
+    // Also, put LED in RAW mode so color changes faster for Morse Code.
+    rgb_ctrl_write((1<<CSR_RGB_CTRL_EXE_OFFSET)|(1<<CSR_RGB_CTRL_CURREN_OFFSET)|
+          (1<<CSR_RGB_CTRL_RGBLEDEN_OFFSET)|(1<<CSR_RGB_CTRL_RRAW_OFFSET)|
+          (1<<CSR_RGB_CTRL_GRAW_OFFSET)|(1<<CSR_RGB_CTRL_BRAW_OFFSET));
 
     // Enable the LED driver, and set 250 Hz mode.
     // Also set quick stop, which we'll use to switch patterns quickly.

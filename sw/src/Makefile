@@ -298,7 +298,7 @@ size: 	$(addprefix $(BUILD)/,$(addsuffix .elf,$(ALL)))
 	$(QUIET)$(SIZE) $^
 	-@echo ''
 
-INCLUDES = . $(INC) $(TINYUSB)/src $(TINYUSB)/src/common $(TINYUSB)/src/class/cdc $(TINYUSB)/hw/bsp
+INCLUDES = . $(INC) $(TINYUSB)/src $(TINYUSB)/src/common $(TINYUSB)/src/class/cdc $(TINYUSB)/hw/bsp $(LDINC_DIR)
 #$(shell perl -e 'foreach (@ARGV) { s/// and print "$$_/*.h " if /^-I/}' -- $(CFLAGS))
 .PHONY: tags
 tags:

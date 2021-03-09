@@ -749,16 +749,19 @@ void video_task(void) {
 }
 
 void init(void) {
-  //rgb_init();                   // Show successful handoff to main program
-  //rgb_mode_error();             //   immediately
-  persistence_init();           // Recover or initialize error logging
-  usb_pullup_out_write(0);      // Disable USB to allow new enumeration
-  irq_setmask(0);               // Unmask (enable) all interrupts
-  irq_setie(1);
-#if 0
-  msleep(1000);                 // Reconfigures timer - needs interupts enabled
+  rgb_init();                           // Show successful handoff to main
+  rgb_raw_write(RGB_RAW_YELLOW);        //   program immediately
+  persistence_init();                   // Recover or initialize error logging
+  usb_pullup_out_write(0);              // Disable USB to allow new enumeration
+  irq_setmask(0);                       // Unmask (enable) all interrupts
+  irq_setie(1);                         // Enable timer interrupt for sleep
+  rtc_init();                           // Configure and enable timer itself
+#ifndef SIMULATION
+  //msleep(11);                           // Standard says 10ms.  Round up.
+  a2time_t end = rtc_read()+11;
+  while(rtc_read()<end)
+    ;
 #endif
-  //rgb_mode_done();              // Pause to let host disconnect USB device
   morse_init(7,0,300);
 #ifndef SIMULATION
   puts("A2");                 // Blink A2 on LED at powerup
@@ -808,6 +811,14 @@ void run_task_list(void) {
 void yield(void) {
   watchdog_timer = 0; // reboot if main loop not called every so often
   run_task_list();
+}
+
+unsigned int msleep(unsigned int ms) {
+  a2time_t end = rtc_read()+ms;
+  while(rtc_read()<end) {
+    yield();
+  }
+  return 0;
 }
 
 int main(void) {

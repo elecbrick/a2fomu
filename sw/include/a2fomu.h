@@ -79,4 +79,11 @@ void yield(void);
 // affecting watchdor timer.
 void run_task_list(void);
 
+// Put task to sleep for the given number of milliseconds.
+// Operating system call allowing a task to pause and keep pausing until a
+// timer has expired. This uses the system ms jiffie clock so a call msleep(n)
+// will sleep between n-1 and n milliseconds. Calling with a parameter 1 will
+// wait at most 1ms and may return instananeously.
+unsigned int msleep(unsigned int ms);
+
 #endif /* _A2FOMU_H_ */
