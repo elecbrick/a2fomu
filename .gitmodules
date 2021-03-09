@@ -19,3 +19,6 @@
 [submodule "hw/rtl/verilog-6502"]
 	path = hw/rtl/verilog-6502
 	url = https://github.com/Arlet/verilog-6502.git
+[submodule "hw/deps/AppleWin"]
+	path = hw/deps/AppleWin
+	url = https://github.com/AppleWin/AppleWin.git

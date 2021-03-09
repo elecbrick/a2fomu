@@ -377,12 +377,7 @@ class BaseSoC(SoCCore, AutoDoc):
                 bios_size = 0x2000   # 8kB foboot failsafe size
                 bios_size = 0x1000   # 4kB bootloader
                 bios_size = 0x0800   # 2kB bootloader
-            if boot_source == "rand":
-                kwargs['cpu_reset_address'] = 0
-                self.submodules.random_rom = RandomFirmwareROM(bios_size)
-                self.add_constant("ROM_DISABLE", 1)
-                self.register_rom(self.random_rom.bus, bios_size)
-            elif boot_source == "bios":
+            if boot_source == "bios" or bios_file is not None:
                 kwargs['cpu_reset_address'] = 0
                 if bios_file is None:
                     self.integrated_rom_size = bios_size
@@ -393,7 +388,11 @@ class BaseSoC(SoCCore, AutoDoc):
                     self.submodules.firmware_rom = FirmwareROM(bios_size, bios_file)
                     self.add_constant("ROM_DISABLE", 1)
                     self.register_rom(self.firmware_rom.bus, bios_size)
-
+            elif boot_source == "rand":
+                kwargs['cpu_reset_address'] = 0
+                self.submodules.random_rom = RandomFirmwareROM(bios_size)
+                self.add_constant("ROM_DISABLE", 1)
+                self.register_rom(self.random_rom.bus, bios_size)
             elif boot_source == "spi":
                 kwargs['cpu_reset_address'] = 0
                 self.integrated_rom_size = bios_size
