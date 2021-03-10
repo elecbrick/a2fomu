@@ -26,6 +26,7 @@ enum task_num {
   disk_task_active,
   max_task
 };
+extern int active_tasks;
 
 // Global performance monitoring statistics.
 extern a2time_t task_runtime[max_task];

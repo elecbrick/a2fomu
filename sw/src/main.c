@@ -88,15 +88,14 @@ void isr(void) {
     timer0_ev_pending_write(1);
     watchdog_timer++;
     if(watchdog_timer>500) {
-      fprintf(persistence, "\n%d Watchdog timeout at %08x sp %08x\n", (int)system_ticks,
-          (unsigned int)csrr(mepc), minsp);
-      // Place a2 in reset 
-      cli_reset();
+      fprintf(persistence, "\n%d Watchdog timeout at %08x sp %08x\n",
+          (int)system_ticks, (unsigned int)csrr(mepc), minsp);
       reboot();
     }
     morse_isr();
   }
   if(csrr(mcause) != 0x8000000b) {  // Machine external interrupt
+    // Any trap or exception that other than USB and timer is logged.
     fprintf(persistence, "%d Exception %d at %08x referencing %08x\n",
         (int)system_ticks, (int)csrr(mcause), (unsigned int)csrr(mepc),
         (unsigned int)csrr(mtval));
@@ -759,7 +758,7 @@ void init(void) {
   irq_setie(1);                         // Enable timer interrupt for sleep
   rtc_init();                           // Configure and enable timer itself
 #ifndef SIMULATION
-  //msleep(11);                           // Standard says 10ms.  Round up.
+  msleep(100);                          // Standard says 10ms but reboot loops..
   a2time_t end = rtc_read()+11;
   while(rtc_read()<end)
     ;
@@ -783,7 +782,7 @@ void init(void) {
  *                                                                            *
  *============================================================================*/
 
-static int active_tasks;
+int active_tasks;
 
 void run_task(void(*task)(void), enum task_num num) {
   int mask = 1<<num;

@@ -349,7 +349,7 @@ void cli_times(void) {
   total += isr_runtime;
   for(task=0; task<max_task; task++) {
     pct=(100*task_runtime[task]+50)/total; ///total; TODO compiles to ebreak
-    printf("%5s %2u%% %u\n", task_name[task],
+    printf("%5s %c %2u%% %u\n", task_name[task], active_tasks&(1<<task)?'A':' ',
         (unsigned)pct, (unsigned)(task_runtime[task]));
   }
   if(isr_runtime>0) {
@@ -440,6 +440,10 @@ void cli_parse(char *command_line) {
   int i;
   char *command = strtok(command_line, " ");
   fprintf(persistence, "CLI>%s\n", command);
+  if(command[0]=='#') {
+    // Comments are ignored
+    return;
+  }
   for(i=0; i<(int)(sizeof(cli_command_list)/sizeof(cli_command_list[0])); i++) {
     if(!strncmp(command, cli_command_list[i].name, strlen(command))) {
       (cli_command_list[i].handler)();
@@ -447,6 +451,7 @@ void cli_parse(char *command_line) {
     }
   }
   puts("Command?\n");
+  printf("i:%d, len:%d, cmd:[%s]\n", i, strlen(command), command);
 }
 
 // Collect characters one at a time to build command in buffer
@@ -531,6 +536,11 @@ int exec(const char*script_name) {
       // Yield control to allow the LED or USB task to transmit stdout.
       // Very useful for debug should something go awry.
       yield();
+      // Strip trailing newline if present
+      if(cli_command[strlen(cli_command)-1]=='\n') {
+        cli_command[strlen(cli_command)-1]='\0';
+      }
+      // Execute command
       cli_parse(cli_command+suppress);
       // Process stdout again.
       yield();
