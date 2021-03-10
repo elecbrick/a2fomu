@@ -52,6 +52,7 @@ void dump_persistence(void) {
     persistence->tail=persistence->_max;
   }
   c=fgetc(persistence);
+  tud_cdc_n_write_str(cdc_tty, "\r\n");
   while(c != EOF) {
     // Fill as much of the USB buffer as we can
     n = tud_cdc_n_write_available(cdc_tty);

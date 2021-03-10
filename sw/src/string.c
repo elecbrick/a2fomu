@@ -86,13 +86,16 @@ char *strtok(char *str, const char *delim) {
     // Check all possible delimiters
     for(p=delim; *p; p++) {
       if(*stored==*p) {
+        // It is a match - delimeter found. Proceed to next character.
         stored++;
         break;
       }
     }
+    // Check if delimiter found
     if(!*p) {
-      // Previous loop found a token character - now find end of token
+      // Valid character but not valid delimiter means start of token
       token = stored;
+      // Find end of token
       while(*++stored) {
         for(p=delim; *p; p++) {
           if(*stored==*p) {
@@ -106,10 +109,12 @@ char *strtok(char *str, const char *delim) {
           break;
         }
       }
+      // End of line reached. Token already properly terminated.
       return token;
     }
+    // Delimiter found, pointer already incremented, check next character
   }
-  // No token found - return NULL
+  // End of string reached with no token found - return NULL
   return NULL;
 }
 #endif

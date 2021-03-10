@@ -90,6 +90,8 @@ void isr(void) {
     if(watchdog_timer>500) {
       fprintf(persistence, "\n%d Watchdog timeout at %08x sp %08x\n", (int)system_ticks,
           (unsigned int)csrr(mepc), minsp);
+      // Place a2 in reset 
+      cli_reset();
       reboot();
     }
     morse_isr();

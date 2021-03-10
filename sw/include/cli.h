@@ -18,5 +18,6 @@ extern char cli_escape;
 
 int cli(char *in, int s);
 int exec(const char *script);
+void cli_reset(void);
 
 #endif /* _CLI_H_ */

@@ -265,7 +265,7 @@ void cli_morse(void) {
 // Print application error counters. The static assert takes no space in the
 // executable but causes the compile to fail if a new counter is added and this
 // file is not updated to display it.
-static_assert(max_application_error==4, "Please display new debug counter");
+static_assert(max_application_error==4, "Debug counters inconsistent");
 
 void cli_overflow(void) {
   printf("tty_input_overflow    %d\n", debug_counter[tty_input_overflow]);
