@@ -51,6 +51,9 @@
 
 volatile a2time_t system_ticks = 0;
 int watchdog_timer = 0;
+int watchdog_max = 500;  // 0.5 seconds
+int yield_max = 1000;    // 1.0 seconds
+a2time_t yield_timeout;
 
 
 void timer_isr(void) {

@@ -47,7 +47,7 @@ signed char prev_h, prev_v, cursor_h, cursor_v;
 int prev_c;
 
 
-unsigned int minsp = SRAM_BASE+SRAM_SIZE;
+unsigned int minsp;
 static inline unsigned int read_stack_pointer(void) {
   unsigned int value;
   asm volatile ("move %0, sp" : "=r"(value));
@@ -87,7 +87,7 @@ void isr(void) {
     system_ticks++;
     timer0_ev_pending_write(1);
     watchdog_timer++;
-    if(watchdog_timer>500) {
+    if(watchdog_timer>watchdog_max) {
       fprintf(persistence, "\n%d Watchdog timeout at %08x sp %08x\n",
           (int)system_ticks, (unsigned int)csrr(mepc), minsp);
       reboot();
@@ -360,11 +360,17 @@ void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
   } else {
     if(itf==0) {
       // usb tty disconnected - revert communications to hard keys and lights
-      stdin->device = a2dev_touch;
-      stdout->device = a2dev_led;
+      if(stdin->device==a2dev_usb && stdin->minor==itf) {
+        stdin->device = a2dev_touch;
+      }
+      if(stdout->device==a2dev_usb && stdout->minor==itf) {
+        stdout->device = a2dev_led;
+      }
     } else {
       // disk detatched
-      stderr->device = a2dev_led;
+      if(stderr->device==a2dev_usb && stderr->minor==itf) {
+        stderr->device = a2dev_led;
+      }
       external_disk_state = ext_disconnected;
       printf("(f)"); // Debug
     }
@@ -754,6 +760,7 @@ void init(void) {
   rgb_raw_write(RGB_RAW_YELLOW);        //   program immediately
   persistence_init();                   // Recover or initialize error logging
   usb_pullup_out_write(0);              // Disable USB to allow new enumeration
+  minsp = read_stack_pointer();         // Stack usage profiling / debugging
   irq_setmask(0);                       // Unmask (enable) all interrupts
   irq_setie(1);                         // Enable timer interrupt for sleep
   rtc_init();                           // Configure and enable timer itself
@@ -799,8 +806,8 @@ void run_task(void(*task)(void), enum task_num num) {
 void run_task_list(void) {
   // Generic FOMU operating system tasks
   run_task(tty_task, tty_task_active);
-  // TODO make LED task generic adding a Morse Code mode
   run_task(tud_task,      tud_task_active);
+  // TODO Separate morse task into generic LED and Touch with Morse Code modes
   run_task(morse_task,    led_task_active);
   //run_task(touch_task,    touch_task_active);  // TODO Need to write this
   //run_task(cli_task,      cli_task_active);    // TODO Need to write this
@@ -810,7 +817,23 @@ void run_task_list(void) {
 }
 
 void yield(void) {
-  watchdog_timer = 0; // reboot if main loop not called every so often
+  static int last_active, ny, next_ny;  // not yet
+  // Some tasks need to wait longer than a watchdog timeout. A secondary timer 
+  // keeps track of a task that keeps yielding longer than allowed.
+  watchdog_timer = 0; // system reboots if this is not cleared every so often
+  if(active_tasks!=last_active) {
+    ny = 0;
+    next_ny = 2;
+  }
+  if(++ny==next_ny) {
+    fprintf(persistence, "Yield: %02x %d\n", active_tasks, ny);
+    // Use exponential decay in logging frequency
+    next_ny*=2;
+  }
+  if(rtc_read()>yield_timeout) {
+    fprintf(persistence, "Yield timeout: %02x %d\n", active_tasks, ny);
+    reboot();
+  }
   run_task_list();
 }
 
@@ -826,6 +849,7 @@ int main(void) {
   init();
   while(1) {
     watchdog_timer = 0; // reboot if main loop not called every so often
+    yield_timeout = rtc_read()+yield_max;
     run_task_list();
   }
   return 0;
