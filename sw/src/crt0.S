@@ -12,6 +12,12 @@
 #define CRT0_PREFIX
 #endif
 
+// Pick a color that identifies stage in case of hang
+fbms_load_color = 2
+bios_load_color = 5
+load_color = 6
+// main() uses 3
+
 #define PASTER(x,y) x ## y
 #define EVALUATOR(x,y)  PASTER(x,y)
 #define NAME(fun) EVALUATOR(fun, VARIABLE)
@@ -138,8 +144,8 @@ crt_init:
   la    RGB_BASE, CSR_RGB_BASE
   li	a0, 0x3F                                // Raw-R|G|B | ON | Enable
   sw	a0, CSR_RGB_CTRL_ADDR&0xFF(RGB_BASE)    // Set LED to RAW mode
-  li	a0, 5                                   // RGB_RAW_MAGENTA
-  sw	a0, CSR_RGB_RAW_ADDR&0xFF(RGB_BASE)     // Ser LED RAW color
+  li	a0, PREFIX(load_color)                  // Chose color per to program
+  sw	a0, CSR_RGB_RAW_ADDR&0xFF(RGB_BASE)     // Set LED RAW color
   #undef RGB_BASE
 
   // Initialize stack pointer to end of RAM
@@ -165,7 +171,7 @@ bss_done:
   // variables when executing from RAM. This loop could be eliminated if so but
   // is kept in case multiple conflicting start addresses are defined.
 //#ifdef LOAD_RAM_ADDR
-  la    t0, _erodata
+  la    t0, _frodata
   la    t1, _fdata
   la    t2, _edata
 data_loop:
