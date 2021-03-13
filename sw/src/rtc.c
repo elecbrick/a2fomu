@@ -45,9 +45,25 @@
 #define RISCV_CSR_MCYCLE
 #endif
 
-//#define RTC_FREQUENCY (CONFIG_CLOCK_FREQUENCY/4)
+#ifdef SIMULATION
+// Use shorter interval to test interrupts in simulation - 100 kHz tick (100us)
+#define RTC_FREQUENCY (1200000)
+#else
+#if CONFIG_CLOCK_FREQUENCY == 12000000
+// CPU and timer both in 12MHz clock domain. This gives us a 1ms jiffie clock.
 #define RTC_FREQUENCY (CONFIG_CLOCK_FREQUENCY)
-// FIXME -- slow clock for testing
+#else
+#if CONFIG_CLOCK_FREQUENCY == 48000000
+// Config_clock runs 4x the speed of the timer and the CPU cores so a divide
+// by 4 is requred for a 1ms jiffie clock updated directly by the timer.
+// This gives us a 1ms jiffie clock.
+#define RTC_FREQUENCY (CONFIG_CLOCK_FREQUENCY/4)
+#else
+#error "Clock frequency does not correspond to known configuration"
+#endif /* 48MHz */
+#endif /* 12MHz */
+#endif /* SIMULATION */
+
 
 volatile a2time_t system_ticks = 0;
 int watchdog_timer = 0;
@@ -66,16 +82,7 @@ void rtc_init(void)
   int t;
 
   timer0_en_write(0);
-  #ifdef SIMULATION
-  // Use a shorter interval to test interrupts in simulation
-  //t = CONFIG_CLOCK_FREQUENCY/10000; // 100 kHz tick (100us)
-  t = CONFIG_CLOCK_FREQUENCY/1000;  // 1000 kHz tick (1ms)
-  #else
-  // Config_clock runs 4x the speed of the timer and the CPU cores so a divide
-  // by 4 is requred as well as the divide for number of jiffies per second.
-  // This gives us a 1ms jiffie clock.
   t = RTC_FREQUENCY/1000;  // 1000 kHz tick (1ms) 
-  #endif
   timer0_reload_write(t);
   timer0_load_write(t);
   timer0_en_write(1);
