@@ -13,10 +13,19 @@
 #endif
 
 // Pick a color that identifies stage in case of hang
-fbms_load_color = 2
-bios_load_color = 5
-load_color = 6
-// main() uses 3
+#define RGB_RAW_BLACK   (0)
+#define RGB_RAW_RED     (1)
+#define RGB_RAW_GREEN   (2)
+#define RGB_RAW_YELLOW  (3)
+#define RGB_RAW_BLUE    (4)
+#define RGB_RAW_MAGENTA (5)
+#define RGB_RAW_CYAN    (6)
+#define RGB_RAW_WHITE   (7)
+
+fbms_load_color = RGB_RAW_GREEN
+bios_load_color = RGB_RAW_MAGENTA
+load_color = RGB_RAW_CYAN
+main_color = RGB_RAW_YELLOW
 
 #define PASTER(x,y) x ## y
 #define EVALUATOR(x,y)  PASTER(x,y)
