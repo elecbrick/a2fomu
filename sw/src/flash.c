@@ -91,7 +91,7 @@ int read_flash(void *dst, int src, int size) {
  * global address space. Copy size bytes from src address to dst offset.
  *===========================================================================*/
 int write_flash(int dst, const void *src, int size) {
-  static int ny, next_ny=1;
+  static int ny, next_ny;
   // This will be called repeatedly until entire write has completed. It will
   // not be completed initially as several miliseconds are required in the best
   // case and will be many seconds for large transfers.
@@ -237,6 +237,8 @@ int write_flash(int dst, const void *src, int size) {
     //printf("Sector at 0x%X already has requested content\n", dst);
     return size;
   }
+  // Reset debug counter;
+  next_ny = 1;
   // Return bytes written so far (none).
   return 0;
 }
