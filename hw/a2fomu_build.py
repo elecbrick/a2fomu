@@ -257,13 +257,14 @@ class BaseSoC(SoCCore, AutoDoc):
     """
 
     SoCCore.csr_map = {
-        "ctrl":           0,  # provided by default (optional)
-        "crg":            1,  # user
-       #"uart_phy":       2,  # provided by default (optional)
-       #"uart":           3,  # provided by default (optional)
-       #"identifier_mem": 4,  # provided by default (optional)
+       #"ctrl":           0,  # LiteX - many better uses for the space
+        "apple2":         0,
+        "crg":            1,  # user - no registers in the default clock module
+       #"uart_phy":       2,  # Fomu PVT has no pins for uart
+       #"uart":           3,  # Fomu PVT has no pins for uart
+       #"identifier_mem": 4,  # unnecessary
         "timer0":         5,  # provided by default (optional)
-        "cpu_or_bridge":  8,
+       #"cpu_or_bridge":  8,  # Nothing here
         "usb":            9,
        #"picorvspi":      10,
         "touch":          11,
@@ -272,7 +273,6 @@ class BaseSoC(SoCCore, AutoDoc):
        #"version":        14,
         "lxspi":          15,
        #"messible":       16,
-        "apple2":         17,
     }
 
     SoCCore.mem_map = {
@@ -309,8 +309,10 @@ class BaseSoC(SoCCore, AutoDoc):
             clk_freq = int(12e6)
             self.submodules.crg = _CRG(platform)
 
-        SoCCore.__init__(self, platform, clk_freq, integrated_sram_size=self.integrated_sram_size, with_uart=False, csr_data_width=32, **kwargs)
-
+        SoCCore.__init__(self, platform, clk_freq,
+                integrated_sram_size=self.integrated_sram_size, with_uart=False,
+                with_ctrl=False, csr_data_width=32, **kwargs)
+        
         if gdb_debug is not None:
             if gdb_debug == "uart":
                 from litex.soc.cores.uart import UARTWishboneBridge

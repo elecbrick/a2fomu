@@ -15,25 +15,51 @@ EXTRA_LOGIC = rtl/verilog-6502/cpu.v rtl/verilog-6502/ALU.v
 
 # Verilog generation is handled by the project script.
 PROJECT_SCRIPT = a2fomu_build.py
-BUILD  = build/gateware
+
+GITHUB_ROOT = ../..
+ICEBRAM = $(GITHUB_ROOT)/icestorm/icebram/icebram
+ICEPACK = icepack
+BIN2HEX = ../bin/bin2hex.py
+GENRUNTIME = ../bin/genruntime.py
+OBJDIR = ../sw/src/.obj
+BUILDDIR  = build/gateware
 
 # Default target: generate and flash project
-flash:	$(BUILD)/a2fomu.bin
-	-dfu-util -D $(BUILD)/a2fomu.bin
+flash:	$(BUILDDIR)/a2fomu.bin
+	-dfu-util -D $(BUILDDIR)/a2fomu.bin
 	while [ ! -e /dev/ttyACM0 ]; do echo -n "."; sleep 1; done;
 	exec screen /dev/ttyACM0
+
+debug: $(BUILDDIR)/a2debug.bin
+	-dfu-util -D $<
+	@#while [ ! -e /dev/ttyACM0 ]; do echo -n "."; sleep 1; done;
+	@#exec screen /dev/ttyACM0
+
+$(BUILDDIR)/a2debug.bin: $(BUILDDIR)/a2debug_fw.bin $(OBJDIR)/runtime.bin
+	$(GENRUNTIME) -b $< -e $(OBJDIR)/runtime.bin -o $@
+
+$(BUILDDIR)/%.bin: $(BUILDDIR)/%.txt
+	$(ICEPACK) $< $@
+
+$(BUILDDIR)/%_fw.txt: $(BUILDDIR)/%.txt $(BUILDDIR)/bios.init
+	$(ICEBRAM) -fv $(BUILDDIR)/mem.init $(BUILDDIR)/bios.init < $< >| $@
+
+$(BUILDDIR)/%.init: $(OBJDIR)/%.bin
+	$(BIN2HEX) $< $@
+
+$(BUILDDIR)/a2debug.txt:
+	./a2debug_build.py --gdb-debug=usb
 
 # Generate gateware with specific BIOS
 flash-%: TARGET = $(subst flash-,,$@)
 flash-%:
 	make ../sw/$(TARGET)/a2$(TARGET).init
-	icebram rand8k.rom ../sw/$(TARGET)/a2$(TARGET).init < $(BUILD)/top.txt > $(BUILD)/$(TARGET).txt
-	icepack -s $(BUILD)/$(TARGET).txt $(BUILD)/$(TARGET).bin
-	dfu-util -D $(BUILD)/$(TARGET).bin
-.PHONY: flash flash-%
+	icebram rand8k.rom ../sw/$(TARGET)/a2$(TARGET).init < $(BUILDDIR)/top.txt > $(BUILDDIR)/$(TARGET).txt
+	icepack -s $(BUILDDIR)/$(TARGET).txt $(BUILDDIR)/$(TARGET).bin
+	dfu-util -D $(BUILDDIR)/$(TARGET).bin
+.PHONY: flash debug flash-%
 
 # Requred simulation tools that are not installed automatically.
-GITHUB_ROOT = $(HOME)/git
 PYTHON_ENV = $(GITHUB_ROOT)/usb-test-suite-build/env/bin
 PYTHONPATH = $(GITHUB_ROOT)/usb-test-suite-build/usb-test-suite-testbenches
 TOOLS_DIR = $(GITHUB_ROOT)/fomu-toolchain-linux_x86_64-v1.5.5/bin
@@ -91,11 +117,11 @@ ifndef VIRTUAL_ENV
 endif
 endif
 
-#SW ?= $(BUILD)/mem_2.init 
-SW ?= build/software/bios/bios.init
+#SW ?= $(BUILDDIR)/mem_2.init 
+SW ?= buildDIR/software/bios/bios.init
 
 sim:	dut.v rom/apple_II.init $(SW)
-	cp $(BUILD)/mem.init .
+	cp $(BUILDDIR)/mem.init .
 	#cp rom/apple_II.init mem_1.init
 	# Save 200ms of simulation time by skipping BELL at start
 	# Keep the screen clear and add a scroll to verify HW compression
@@ -116,24 +142,24 @@ build/software/bios/bios.bin:
 	mkdir -p build/software/bios
 	cd build/software/bios && $(MAKE) LITEX=1 -f ../../../../sw/Makefile
 
-$(BUILD)/mem_2.init: $(BUILD)/a2fomu.init
-	cp $(BUILD)/a2fomu.init $(BUILD)/mem_2.init
+$(BUILDDIR)/mem_2.init: $(BUILDDIR)/a2fomu.init
+	cp $(BUILDDIR)/a2fomu.init $(BUILDDIR)/mem_2.init
 
-$(BUILD)/a2fomu.bin: ../sw/src/.obj/runtime.bin $(BUILD)/top.bin
+$(BUILDDIR)/a2fomu.bin: $(OBJDIR)/runtime.bin $(BUILDDIR)/top.bin
 	python3 genruntime.py
 
-$(BUILD)/top.bin: $(PROJECT_SCRIPT) $(wildcard rtl/*.py)
-	./$(PROJECT_SCRIPT) --boot-source=bios --bios=../sw/src/.obj/bios.hex
+$(BUILDDIR)/top.bin: $(PROJECT_SCRIPT) $(wildcard rtl/*.py)
+	./$(PROJECT_SCRIPT) --boot-source=bios --bios=$(OBJDIR)/bios.hex
 
-#$(BUILD)/dut.v: $(PROJECT_SCRIPT) build/software/bios/bios.bin 
+#$(BUILDDIR)/dut.v: $(PROJECT_SCRIPT) build/software/bios/bios.bin 
 
 tb.v:	tb_wrapper.v 
 	cp tb_wrapper.v tb.v
 
 dut.v:	$(PROJECT_SCRIPT) tb_wrapper.v $(TARGET_DEPS)
-	@# This dep causes double build => $(BUILD)/dut.v
+	@# This dep causes double build => $(BUILDDIR)/dut.v
 	$(BUILD_PROJECT) --sim
-	mv $(BUILD)/dut.v .
+	mv $(BUILDDIR)/dut.v .
 
 usb.vcd: dut.v
 	sed -i "s/dump.vcd/usb.vcd/g" tb.v

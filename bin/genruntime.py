@@ -1,4 +1,11 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
+
+# genruntime.py - Part of a2fomu - Copyright (c) 2020-2021 Doug Eaton
+#
+# This file is part of a2fomu which is released under the two clause BSD
+# licence.  See file LICENSE in the project root directory or visit the
+# project at https://github.com/elecbrick/a2fomu for full license details.
+
 import sys, getopt
 from enum import Enum
 from struct import pack, unpack, iter_unpack
@@ -28,10 +35,11 @@ def main(argv):
         sys.exit(2)
     for opt, arg in opts:
         if opt in ('-h', "--help"):
-            print('Usage: genruntime.py -s -h -b<file> -e[<addr>,]<file> -d<addr>,<file>')
+            print('Usage: genruntime.py -s -h -b<file> -e[<addr>,]<file> -d<addr>,<file> -o<file>')
             print('    -b  --bitstream=<file>           bitstream')
             print('    -e  --executable=[<addr>,]<file> executable')
             print('    -d  --data=<addr>,<file>         data file')
+            print('    -o  --ofile=<file>               output file')
             print('    -s  --sim                        simulator image')
             sys.exit()
         elif opt in ("-b", "--bitstream"):
