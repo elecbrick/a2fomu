@@ -14,7 +14,8 @@ EXTRA_LOGIC = rtl/verilog-6502/cpu.v rtl/verilog-6502/ALU.v
 #EXTRA_LOGIC += rtl/spiflash/AT25SF161.v
 
 # Verilog generation is handled by the project script.
-PROJECT_SCRIPT = a2fomu_build.py
+PROJECT_SCRIPT = ./a2fomu_build.py
+PROJECT_OPTIONS = --revision pvt --boot-source=rand
 
 GITHUB_ROOT = ../..
 ICEBRAM = $(GITHUB_ROOT)/icestorm/icebram/icebram
@@ -23,6 +24,12 @@ BIN2HEX = ../bin/bin2hex.py
 GENRUNTIME = ../bin/genruntime.py
 OBJDIR = ../sw/src/.obj
 BUILDDIR  = build/gateware
+
+ifneq ("$(wildcard /etc/dpkg/origins/raspbian)","")
+$(info Raspberry Pi detected. Configuring Fomu EVT)
+PROJECT_SCRIPT = ./a2debug_build.py
+PROJECT_OPTIONS = --revision evt --wishbone-debug --boot-source=rand --gdb-debug=usb
+endif
 
 # Default target: generate and flash project
 flash:	$(BUILDDIR)/a2fomu.bin
@@ -48,7 +55,7 @@ $(BUILDDIR)/%.init: $(OBJDIR)/%.bin
 	$(BIN2HEX) $< $@
 
 $(BUILDDIR)/a2debug.txt:
-	./a2debug_build.py --gdb-debug=usb
+	$(PROJECT_SCRIPT) $(PROJECT_OPTIONS)
 
 # Generate gateware with specific BIOS
 flash-%: TARGET = $(subst flash-,,$@)
@@ -86,8 +93,6 @@ endif
 #$(PYTHONPATH)/tests/test-enum.py
 MODULE = tests.$(TEST_SCRIPT)
 
-BUILD_PROJECT = python3 $(PROJECT_SCRIPT) --revision pvt --wishbone-debug
-#--bios=/home/doug/git/usb-test-suite-build/foboot/hw/build/software/bios/bios.elf
 
 # Convert binaries to hex data for use by the simulator.
 %.init: %.bin
@@ -145,11 +150,11 @@ build/software/bios/bios.bin:
 $(BUILDDIR)/mem_2.init: $(BUILDDIR)/a2fomu.init
 	cp $(BUILDDIR)/a2fomu.init $(BUILDDIR)/mem_2.init
 
-$(BUILDDIR)/a2fomu.bin: $(OBJDIR)/runtime.bin $(BUILDDIR)/top.bin
-	python3 genruntime.py
+$(BUILDDIR)/a2fomu.bin: $(BUILDDIR)/top.bin $(OBJDIR)/runtime.bin
+	$(GENRUNTIME) -b $< -e $(OBJDIR)/runtime.bin -o $@
 
 $(BUILDDIR)/top.bin: $(PROJECT_SCRIPT) $(wildcard rtl/*.py)
-	./$(PROJECT_SCRIPT) --boot-source=bios --bios=$(OBJDIR)/bios.hex
+	$(PROJECT_SCRIPT) $(PROJECT_OPTIONS)
 
 #$(BUILDDIR)/dut.v: $(PROJECT_SCRIPT) build/software/bios/bios.bin 
 
@@ -158,7 +163,7 @@ tb.v:	tb_wrapper.v
 
 dut.v:	$(PROJECT_SCRIPT) tb_wrapper.v $(TARGET_DEPS)
 	@# This dep causes double build => $(BUILDDIR)/dut.v
-	$(BUILD_PROJECT) --sim
+	$(PROJECT_SCRIPT) $(PROJECT_OPTIONS) --sim
 	mv $(BUILDDIR)/dut.v .
 
 usb.vcd: dut.v
