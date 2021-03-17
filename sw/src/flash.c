@@ -10,8 +10,8 @@
 // of 256 bytes.  Coincidentally, the SPI Flash on FOMU is programmed one 256
 // byte page at a time and erased one 4kB sector at a time.
 
-#include <generated/csr.h>
 #include <generated/mem.h>
+#include <generated/csr.h>
 #include <spi.h>
 #include <crc.h>
 #include <rtc.h>

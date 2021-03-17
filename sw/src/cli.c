@@ -5,14 +5,14 @@
 // licence.  See file LICENSE in the project root directory or visit the
 // project at https://github.com/elecbrick/a2fomu for full license details.
 
+#include <generated/mem.h>
+#include <generated/csr.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
 #include <assert.h>
-#include <generated/csr.h>
-#include <generated/mem.h>
 #include <a2fomu.h>
 #include <cli.h>
 #include <errno.h>
@@ -45,6 +45,19 @@ int atox(const char *nptr) {
     number = (number<<4)+digit;
   }
   return number;
+}
+
+// Generic debug routine - called with command "a"
+void cli_about(void) {
+  printf("stdout dev %d, min %d, buf %08x, max %x head %03x, tail %03x\n",
+      stdout->device, stdout->minor, (unsigned int)stdout->buffer, stdout->_max,
+      stdout->head, stdout->tail);
+  printf("stderr dev %d, min %d, buf %08x, max %x head %03x, tail %03x\n",
+      stderr->device, stderr->minor, (unsigned int)stderr->buffer, stderr->_max,
+      stderr->head, stderr->tail);
+  printf("stdin dev %d, min %d, buf %08x, max %x head %03x, tail %03x\n",
+      stdin->device, stdin->minor, (unsigned int)stdin->buffer, stdin->_max,
+      stdin->head, stdin->tail);
 }
 
 void cli_bload(void) {
@@ -407,6 +420,7 @@ struct cli_command_entry {
 };
 
 struct cli_command_entry cli_command_list[] = {
+  {"about",     cli_about},
   {"bload",     cli_bload},
   {"clock",     cli_clock},
   {"call",      cli_call},

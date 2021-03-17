@@ -5,11 +5,11 @@
 // licence.  See file LICENSE in the project root directory or visit the
 // project at https://github.com/elecbrick/a2fomu for full license details.
 
+#include <generated/mem.h>
+#include <generated/csr.h>
 #include <irq.h>
 #include <rgb.h>
 #include <spi.h>
-#include <generated/csr.h>
-#include <generated/mem.h>
 
 // ICE40UP5K bitstream images (with SB_MULTIBOOT header) are
 // 104250 bytes.  The SPI flash has 4096-byte erase blocks.

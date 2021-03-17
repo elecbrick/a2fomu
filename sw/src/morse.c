@@ -428,13 +428,13 @@ enum morse_state morse_state;
 int current_pattern;
 int current_bit;
 
-void morse_init(int on, int off, int ms) {
-  rgb_morse_off = off;  // Black
-  rgb_morse_on =  on;   // White
-  dit_duration =  ms;   // 30 ms is standard speed
+void morse_init(void) {
+  rgb_morse_off = 0;            // Black
+  rgb_morse_on = 7;             // White
+  dit_duration = 300;           // 30 ms is standard speed
   max_dit_time = 400;
 #ifdef SIMULATION
-  //dit_duration = 1;          // 0.1 ms, not humanly detectable
+  dit_duration = 1;             // 0.1 ms, not humanly detectable
 #else
   //dit_duration = 100;         // 30 ms, standard speed
 #endif

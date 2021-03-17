@@ -5,6 +5,8 @@
 // licence.  See file LICENSE in the project root directory or visit the
 // project at https://github.com/elecbrick/a2fomu for full license details.
 
+#include <generated/soc.h>
+#include <generated/mem.h>
 #include <sys/types.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -15,8 +17,6 @@
 #include <time.h>
 #include <tusb.h>
 #include <bsp/board.h>
-#include <generated/soc.h>
-#include <generated/mem.h>
 #include <rgb.h>
 #include <rtc.h>
 #include <cli.h>
@@ -28,7 +28,8 @@
 // Performance analysis is ongoing. The system will speed if if performance
 // monitoring is disabled but this also means the cli command "times" has
 // nothing to display.
-#define ISR_TIME_TRACKING
+//#define ISR_TIME_TRACKING
+#define ACCURATE_PERFMON
 #include <perfmon.h>
 
 a2time_t task_runtime[max_task];
@@ -765,16 +766,18 @@ void init(void) {
   irq_setie(1);                         // Enable timer interrupt for sleep
   rtc_init();                           // Configure and enable timer itself
 #ifndef SIMULATION
-  msleep(100);                          // Standard says 10ms but reboot loops..
-  a2time_t end = rtc_read()+11;
-  while(rtc_read()<end)
+  //msleep(100);                          // Standard says 10ms but reboot loops..
+  a2time_t end = rtc_read()+1000;      // 1000ms = 1.0 seconds
+  while(rtc_read()<end)                 // This is msleep() but busy loop
     ;
 #endif
-  morse_init(7,0,300);
+  usb_pullup_out_write(1);              // Enable USB for debug
+  morse_init();                         // LED goes BLACK
 #ifndef SIMULATION
   puts("A2");                 // Blink A2 on LED at powerup
 #endif
   tusb_init();
+  return;
   disk_init();
   // Mount root filesystem
   mount((void*)(FLASHFS_START_ADDRESS+SPIFLASH_BASE), 0);
@@ -830,10 +833,10 @@ void yield(void) {
     // Use exponential decay in logging frequency
     next_ny*=2;
   }
-  if(rtc_read()>yield_timeout) {
-    fprintf(persistence, "Yield timeout: %02x %d\n", active_tasks, ny);
-    reboot();
-  }
+  //if(rtc_read()>yield_timeout) {
+    //fprintf(persistence, "Yield timeout: %02x %d\n", active_tasks, ny);
+    //reboot();
+  //}
   run_task_list();
 }
 
@@ -847,6 +850,8 @@ unsigned int msleep(unsigned int ms) {
 
 int main(void) {
   init();
+  watchdog_max = 5000;
+  yield_max = 1000;
   while(1) {
     watchdog_timer = 0; // reboot if main loop not called every so often
     yield_timeout = rtc_read()+yield_max;

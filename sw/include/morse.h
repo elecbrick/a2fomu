@@ -21,8 +21,7 @@ enum morse_key {
   morse_key_max
 };
 
-void morse_init(int on, int off, int ms);
-//void morse_init(void);
+void morse_init(void);
 void morse_isr(void);
 void morse_task(void);
 int morse_isidle(void);
