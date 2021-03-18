@@ -44,7 +44,10 @@ extern int gettimeofdayfast(struct timeval  *__tv,
 // Obsolete functions replaced by rtc_init(), perfmon() and yield()
 void time_init(void);
 int elapsed(int *last_event, int period);
-void msleep(int ms);
 #endif
+
+unsigned int sleep(unsigned int s);     // Task waits s seconds allowing others
+unsigned int msleep(unsigned int ms);   // Wait ms milliseconds allowing others
+unsigned int nsleep(unsigned int ns);   // Busy wait ns nanoseconds, CPU freezes
 
 #endif /* _TIME_H_ */

@@ -22,3 +22,6 @@
 [submodule "hw/deps/AppleWin"]
 	path = hw/deps/AppleWin
 	url = https://github.com/AppleWin/AppleWin.git
+[submodule "hw/deps/spibone"]
+	path = hw/deps/spibone
+	url = https://github.com/xobs/spibone.git

@@ -11,6 +11,7 @@
 #include <irq.h>                // Risc-V CPU internal privileged CSR registers
 #include <csr-defs.h>           // Risc-V CPU internal privileged CSR registers
 #include <generated/csr.h>      // LiteX SoC user CSR registers
+#include <a2fomu.h>             // OS call yield() used by sleep and msleep
 
 // There are two different methods available for keeping time in the SoC
 // containing LiteX and Risc-V. A timer module with interrupt is provided
@@ -89,6 +90,38 @@ void rtc_init(void)
   timer0_ev_enable_write(1);
   timer0_ev_pending_write(1);
   irq_setmask(irq_getmask() | (1<<TIMER0_INTERRUPT));
+}
+
+
+// Suspend task until the require time has passed
+// Parameter is time in seconds
+unsigned int sleep(unsigned int s) {
+  a2time_t end = rtc_read()+1000*s;
+  while(rtc_read()<end) {
+    yield();
+  }
+  return 0;
+}
+
+// Suspend task until the require time has passed
+// Parameter is time in milliseconds
+unsigned int msleep(unsigned int ms) {
+  a2time_t end = rtc_read()+ms;
+  while(rtc_read()<end) {
+    yield();
+  }
+  return 0;
+}
+
+// Busy wait until the required time has passed
+// Parameter is time in nanoseconds
+unsigned int nsleep(unsigned int ns) {
+  // Approximate HZ with a compile time constant of 84 rather than 83.333
+  a2time_t end = activetime()+(ns*1000000)/RTC_FREQUENCY;
+  while(activetime()<end) {
+    ;
+  }
+  return 0;
 }
 
 a2time_t activetime(void) {
