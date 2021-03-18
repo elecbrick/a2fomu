@@ -10,7 +10,7 @@ import subprocess
 import argparse
 
 
-DEPS_DIR = "../../a3fomu/hw/deps"
+DEPS_DIR = "deps"
 
 DEFAULT_DEPS = {
     'migen':        'https://github.com/m-labs/migen.git',
