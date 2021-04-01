@@ -385,6 +385,7 @@ int sprintf(char *str, const char *format, ...) {
 }
 
 #ifdef FWRITE_IN_STDIO
+// TODO These routines still need to be implemented
 size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream) {
   (void)ptr;
   (void)size;
@@ -405,7 +406,7 @@ size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream) {
 
 #ifdef PERROR_IN_STDIO
 void perror(const char *s) {
-  morse_init(7,0,300);
+  morse_init();
   while(true) {
     (void)morse_putchar(c);
     while(!morse_isidle())

@@ -75,14 +75,10 @@ void load_runtime(uint32_t *src) {
   rgb_set(0xff0000);            // Pulse bright red
 }
 
-int bios_main(int argc, char **argv)
-{
-  (void)argc;
-  (void)argv;
-
-    rgb_init();
-    spiInit();
-    spiFree();
+int bios_main(void) {
+  rgb_init(LED_FADE);
+  spiInit();
+  spiFree();
 
 #ifdef SIMULATION
   extern uint32_t _etext;
@@ -91,6 +87,10 @@ int bios_main(int argc, char **argv)
   // foboot and dfu-util write FPGA image at offset 0x40000 in flash.
   // Add bitstream length to this to get the starting offset of software
   // images that are to be copied into RAM.
+  // Check location accoring to priority. Newer images take precidence.
+  // Start by guessing Fomu EVT multi-boot enabled image is present.
+  load_runtime((uint32_t*)(SPIFLASH_BASE +    160 + 104090 + 2)); // 2005969c
+  // No, so check if Fomu PVT image loaded by DFU into slot 2.
   load_runtime((uint32_t*)(SPIFLASH_BASE + 262144 + 104090 + 2)); // 2005969c
 #endif
   return 0;

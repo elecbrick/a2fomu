@@ -441,7 +441,7 @@ void morse_init(void) {
 
   // Turn on RGB block and current enable, enable led control enable LED
   // driver, set 250 Hz mode, enable quick stop, set clock to 12 MHz/64 kHz-1.
-  rgb_init();
+  rgb_init(LED_MORSE);
   rtc_init();
 
   // Activate override allowing raw control.
