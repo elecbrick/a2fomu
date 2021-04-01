@@ -12,8 +12,12 @@
 
 #define FATFS_NUM_SECTORS  (0x17E)
 #if FATFS_NUM_SECTORS != (FLASHFS_NUM_SECTORS-2)
+#if SPIFLASH_SIZE == 0x01000000
+// Ignore this as Fomu EVT has larger flash than regular Fomu PVT does.
+#else
 #error "Block count mismatch"
-#endif
+#endif /* SPIFLASH_SIZE == 0x01000000 */
+#endif /* FATFS_NUM_SECTORS != (FLASHFS_NUM_SECTORS-2) */
 
 int flash_drive = FIRST_SAFE_ADDRESS;
 
