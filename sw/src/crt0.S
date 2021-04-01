@@ -63,8 +63,8 @@ _start:
   .word BOOSTER_MAGIC           // Must be bytes 4-7
   nop
 #elif defined LOAD_FOBOOT_MAIN
-  .word FOBOOT_MAIN_MAGIC       // Can be in first 256 bytes
-  nop
+  .word FOBOOT_MAIN_MAGIC       // Can be in first 256 bytes but will never
+  nop                           // appear in booster or in time delayed app.
 #else
   nop                           // Always use 8 bytes no matter which path taken
   nop
@@ -85,6 +85,7 @@ _start:
   nop
 #endif
 
+#if defined CACHELINE_SIZE && CACHELINE_SIZE > 32
 // Program cache line is 32 bytes. The above will only ever be run once so
 // should never be allowed to enter the cache after that point. Waste 16 bytes
 // to ensure that is the case. Delete these if the program runs out of space.
@@ -97,6 +98,7 @@ _start:
   nop
   nop
   nop
+#endif
 
 .section .text
 .global  trap_entry
