@@ -54,8 +54,8 @@ void rgb_switch_mode(uint8_t mode, uint8_t ontime, uint8_t offtime,
   }
   // Blink ON time and OFF time are configurable from 0 to 8.16 seconds,
   // in 0.032 second increments.
-  rgb_write(onrate, LEDDONR);
-  rgb_write(offrate, LEDDOFR);
+  rgb_write(ontime, LEDDONR);
+  rgb_write(offtime, LEDDOFR);
 
   rgb_write(BREATHE_ENABLE|BREATHE_EDGE_BOTH|BREATHE_MODE_MODULATE|
       BREATHE_RATE(onrate), LEDDBCRR);
