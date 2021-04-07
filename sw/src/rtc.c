@@ -93,8 +93,23 @@ void rtc_init(void)
 }
 
 
+// Convert ns parameter to system ticks. Use gcc builtin for multiplication
+// or attributes to keep the compiler from optimizing this routine into a
+// constant.
+//int64_t __muldi3(int64_t, int64_t);
+//__attribute__((optimize("O1")))
+__attribute__((noinline,noclone))
+a2time_t nstoa2time(int ns) {
+  a2time_t time;
+  //time = __muldi3(ns,RTC_FREQUENCY);
+  time = ns*RTC_FREQUENCY;
+  time = time/1000000000LL;
+  return time;
+}
+
 // Suspend task until the require time has passed
 // Parameter is time in seconds
+// Method: Use the jiffie clock, updated by ISR, effectively doing nothing.
 unsigned int sleep(unsigned int s) {
   a2time_t end = rtc_read()+1000*s;
   while(rtc_read()<end) {
@@ -105,6 +120,7 @@ unsigned int sleep(unsigned int s) {
 
 // Suspend task until the require time has passed
 // Parameter is time in milliseconds
+// Method: Use the jiffie clock, updated by ISR, effectively doing nothing.
 unsigned int msleep(unsigned int ms) {
   a2time_t end = rtc_read()+ms;
   while(rtc_read()<end) {
@@ -115,9 +131,13 @@ unsigned int msleep(unsigned int ms) {
 
 // Busy wait until the required time has passed
 // Parameter is time in nanoseconds
+// Method: Use one of two methods depending on length of delay.
+//   Divisions is slow but accurate. Good for delays longer that the time it
+//   takes to calculate the required cycle count.
+//   Short delays use an approximation cretated with a single multiplication.
 unsigned int nsleep(unsigned int ns) {
   // Approximate HZ with a compile time constant of 84 rather than 83.333
-  a2time_t end = activetime()+(ns*1000000)/RTC_FREQUENCY;
+  a2time_t end = activetime()+nstoa2time(ns);
   while(activetime()<end) {
     ;
   }
