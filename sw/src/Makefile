@@ -49,8 +49,19 @@ CFLAGS += \
   -std=gnu11 \
   -flto \
   -fno-inline \
+  -fno-builtin \
   -ggdb3 \
   -DDEBUG=0
+
+# Debugging/Optimization
+ifeq ($(DEBUG), 1)
+  CFLAGS += -Og
+else
+  CFLAGS += -Os
+endif
+ifeq ($(LIST), 1)
+  CFLAGS += -Wa,-alh,-L
+endif
 
 SRC_S   := crt0-rgbraw.o
 ASFLAGS += $(CFLAGS)
@@ -93,16 +104,6 @@ CFLAGS += \
 	-Wmissing-format-attribute \
 	-Wunreachable-code \
 	-Wcast-align
-
-# Debugging/Optimization
-ifeq ($(DEBUG), 1)
-  CFLAGS += -Og -ggdb
-else
-  CFLAGS += -Os
-endif
-ifeq ($(LIST), 1)
-  CFLAGS += -Wa,-alh,-L
-endif
 
 # Simulating the runtime with Verilator or iverilog is sped up by loading the
 # executable directly into the very large ROM that is also simulated. This
@@ -179,11 +180,8 @@ LFLAGS  = $(CFLAGS) $(ADD_LFLAGS) -L$(LD_DIR) -L$(LDINC_DIR) \
 	  $(addprefix $(LDPREFIX), $(LDSCRIPTS)) \
 	  -Wl,--build-id=none \
 
-$(warning s1 $(LDSCRIPTS))
-$(warning s2 $(addprefix $(LDPREFIX), $(LDSCRIPTS)))
-
 # Flags that help with debug. Note that --noinhibit-exec breaks make by
-# producing a file hiding any errors. The map and symbol cross reference
+# producing a file and may thus hide errors. The map and symbol cross reference
 # options clearly show how memory is being used.
 LFLAGS += -Wl,-Map=$@.map \
 	  -Wl,-cref
@@ -260,9 +258,12 @@ $(BUILD)/%.hex: $(BUILD)/%.elf
 	@echo CREATE $@
 	$(QUIET)$(OBJCOPY) -O ihex $^ $@
 
-# TinyUSB needs to find <csr.h> but LiteX needs to find <generated/csr.h>
+# TinyUSB driver for ValentyUSB needs to find <csr.h> but LiteX needs to find
+# <generated/csr.h>.  Additionally, the ValentyUSB driver uses the macro DEBUG
+# unlike the rest of TinyUSB and this interferes with the make DEBUG=1 which
+# changes the gcc optimizatin for the entire project.
 $(BUILD)/obj/$(TINYUSB)/src/portable/$(VENDOR)/$(CHIP_FAMILY)/dcd_eptri.o: \
-	CFLAGS += -I$(if $(RELEASE), \
+	CFLAGS +=  -DDEBUG=0 -I$(if $(RELEASE), \
 		../../release/$(RELEASE)/include/generated/, \
 		../../hw/build/software/include/generated/)
 
