@@ -47,7 +47,6 @@ FILE *disk_fd;
 signed char prev_h, prev_v, cursor_h, cursor_v;
 int prev_c;
 
-
 unsigned int minsp;
 static inline unsigned int read_stack_pointer(void) {
   unsigned int value;
@@ -63,7 +62,11 @@ void reboot(void)
   __builtin_unreachable();
 }
 
-void isr(void) {
+#ifdef USING_ATTRIBUTE_INTERRUPT
+__attribute__ ((interrupt ("machine")))
+#endif
+void isr(void)
+{
   unsigned int irqs;
   #ifdef ISR_TIME_TRACKING
   a2time_t isr_start = activetime();
@@ -757,32 +760,34 @@ void video_task(void) {
 }
 
 void init(void) {
-  rgb_init();                           // Show successful handoff to main
+  rgb_init(LED_RAW);                    // Show successful handoff to main
   rgb_raw_write(RGB_RAW_YELLOW);        //   program immediately
   persistence_init();                   // Recover or initialize error logging
   usb_pullup_out_write(0);              // Disable USB to allow new enumeration
   minsp = read_stack_pointer();         // Stack usage profiling / debugging
-  irq_setmask(0);                       // Unmask (enable) all interrupts
-  irq_setie(1);                         // Enable timer interrupt for sleep
   rtc_init();                           // Configure and enable timer itself
 #ifndef SIMULATION
-  //msleep(100);                          // Standard says 10ms but reboot loops..
-  a2time_t end = rtc_read()+1000;      // 1000ms = 1.0 seconds
-  while(rtc_read()<end)                 // This is msleep() but busy loop
-    ;
 #endif
-  usb_pullup_out_write(1);              // Enable USB for debug
+  nsleep(1000000000);                        // Standard requires 10ms - TODO verify
+  rgb_raw_write(RGB_RAW_BLUE);          //   program immediately
   morse_init();                         // LED goes BLACK
 #ifndef SIMULATION
   puts("A2");                 // Blink A2 on LED at powerup
 #endif
+  rgb_raw_write(RGB_RAW_MAGENTA);       // State progression
   tusb_init();
-  return;
   disk_init();
+  rgb_raw_write(RGB_RAW_GREEN);         // State progression
   // Mount root filesystem
   mount((void*)(FLASHFS_START_ADDRESS+SPIFLASH_BASE), 0);
   // Run startup program script
   exec("HELLO");
+#ifdef USING_ATTRIBUTE_INTERRUPT
+  // Set the Machine Trap Vector to the Interrupt Service Routine defined above.
+  csrw(mtvec, isr);
+#endif
+  irq_setmask(0);                       // Unmask (enable) USB interrupt as well
+  irq_setie(1);                         // Enable timer interrupt for sleep
 }
 
 
@@ -838,14 +843,6 @@ void yield(void) {
     //reboot();
   //}
   run_task_list();
-}
-
-unsigned int msleep(unsigned int ms) {
-  a2time_t end = rtc_read()+ms;
-  while(rtc_read()<end) {
-    yield();
-  }
-  return 0;
 }
 
 int main(void) {

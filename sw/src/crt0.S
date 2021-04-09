@@ -101,6 +101,8 @@ _start:
 #endif
 
 .section .text
+
+#ifndef USING_ATTRIBUTE_INTERRUPT
 .global  trap_entry
 // External interrupt and machine exception handler. Save all registers caller
 // is responsible for on the stack and call C isr() interrupt service routine.
@@ -142,6 +144,7 @@ trap_entry:
   lw   x31,  0*4(sp)
   addi sp, sp, 16*4     // Remove frame from stack
   mret                  // Return to user mode.
+#endif
 
 .text
 crt_init:
@@ -161,9 +164,11 @@ crt_init:
 
   // Initialize stack pointer to end of RAM
   la    sp, _fstack + 4
+#ifndef USING_ATTRIBUTE_INTERRUPT
   // Set interrupt handler to ASM routine that calls C isr()
   la    a0, trap_entry
   csrw  mtvec, a0
+#endif
 
 bss_init:
   // Zero all global variables not explicitly initializesd as per C standard.
