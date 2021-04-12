@@ -105,19 +105,6 @@ CFLAGS += \
 	-Wunreachable-code \
 	-Wcast-align
 
-# Simulating the runtime with Verilator or iverilog is sped up by loading the
-# executable directly into the very large ROM that is also simulated. This
-# means the executable loads into address 0 when simulating.
-# When not simulating, assume a boot-loader in ROM is copying the image from
-# Flash into RAM using only local variables. It is not safe to let Foboot load
-# this image directly as its interrupt handler updates global variables and
-# will corrupt the image.
-ifeq ($(SIM), 1)
-$(info Simulation build)
-CFLAGS     += -DSIMULATION
-LDREGION   := sim.ld
-endif
-
 # TinyUSB: The macros TOP, VENDOR and CHIP_FAMILY must be defined when
 # compiling TinyUSB source files.
 TINYUSB    := ../tinyusb
@@ -179,6 +166,19 @@ LFLAGS  = $(CFLAGS) $(ADD_LFLAGS) -L$(LD_DIR) -L$(LDINC_DIR) \
 	  -Wl,--no-warn-mismatch \
 	  $(addprefix $(LDPREFIX), $(LDSCRIPTS)) \
 	  -Wl,--build-id=none \
+
+# Simulating the runtime with Verilator or iverilog is sped up by loading the
+# executable directly into the very large ROM that is also simulated. This
+# means the executable loads into address 0 when simulating.
+# When not simulating, assume a boot-loader in ROM is copying the image from
+# Flash into RAM using only local variables. It is not safe to let Foboot load
+# this image directly as its interrupt handler updates global variables and
+# will corrupt the image.
+ifeq ($(SIM), 1)
+$(info Simulation build)
+CFLAGS     += -DSIMULATION
+$(RUNTIME): LDREGION   := rom.ld
+endif
 
 # Flags that help with debug. Note that --noinhibit-exec breaks make by
 # producing a file and may thus hide errors. The map and symbol cross reference
