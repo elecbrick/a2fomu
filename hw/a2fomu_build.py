@@ -139,8 +139,8 @@ class sim_Platform(SimPlatform):
         SimPlatform.__init__(self,
                              "sim",
                              sim_io,
-                             sim_connectors,
-                             toolchain="verilator")
+                             connectors=sim_connectors,
+                             toolchain=toolchain)
         self.revision = revision
         self.spi_size = 2 * 1024 * 1024
         self.spi_dummy = 6
