@@ -187,7 +187,7 @@ bss_done:
   // variables when executing from RAM. This loop could be eliminated if so but
   // is kept in case multiple conflicting start addresses are defined.
 //#ifdef LOAD_RAM_ADDR
-  la    t0, _frodata
+  la    t0, _erodata
   la    t1, _fdata
   la    t2, _edata
 data_loop:
