@@ -24,6 +24,10 @@ register long sp asm ("sp");
 //#define HEAP_LOG (struct log)_end
 
 void persistence_init(void) {
+  #ifdef SIMULATION
+    // Ensure following test does not fail when looking at uninitialized mem.
+    _end.magic = 0;
+  #endif
   if(_end.magic == LOG_MAGIC) {
     // Do nothing until log is read
   } else {
