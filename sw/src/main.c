@@ -29,7 +29,8 @@
 // monitoring is disabled but this also means the cli command "times" has
 // nothing to display.
 //#define ISR_TIME_TRACKING
-#define ACCURATE_PERFMON
+//#define ACCURATE_PERFMON
+#define DISABLE_PERFMON
 #include <perfmon.h>
 
 a2time_t task_runtime[max_task];
@@ -761,33 +762,40 @@ void video_task(void) {
 
 void init(void) {
   rgb_init(LED_RAW);                    // Show successful handoff to main
-  rgb_raw_write(RGB_RAW_YELLOW);        //   program immediately
+  rgb_raw_write(RGB_RAW_YELLOW);
   persistence_init();                   // Recover or initialize error logging
   usb_pullup_out_write(0);              // Disable USB to allow new enumeration
   minsp = read_stack_pointer();         // Stack usage profiling / debugging
-  rtc_init();                           // Configure and enable timer itself
-#ifndef SIMULATION
-#endif
-  nsleep(1000000000);                        // Standard requires 10ms - TODO verify
-  rgb_raw_write(RGB_RAW_BLUE);          //   program immediately
-  morse_init();                         // LED goes BLACK
-#ifndef SIMULATION
-  puts("A2");                 // Blink A2 on LED at powerup
-#endif
-  rgb_raw_write(RGB_RAW_MAGENTA);       // State progression
-  tusb_init();
-  disk_init();
-  rgb_raw_write(RGB_RAW_GREEN);         // State progression
-  // Mount root filesystem
-  mount((void*)(FLASHFS_START_ADDRESS+SPIFLASH_BASE), 0);
-  // Run startup program script
-  exec("HELLO");
+
+  // Enable interrupts
+  // This is done before any interrupt could be generated as interrupts are
+  // edge triggered. Interrupts will never be serviced if one comes in before
+  // the interrupt handler is enabled.
 #ifdef USING_ATTRIBUTE_INTERRUPT
   // Set the Machine Trap Vector to the Interrupt Service Routine defined above.
   csrw(mtvec, isr);
 #endif
-  irq_setmask(0);                       // Unmask (enable) USB interrupt as well
-  irq_setie(1);                         // Enable timer interrupt for sleep
+  irq_setmask(0);                       // Unmask (enable) all interrupts
+  irq_setie(1);                         // Enable interrupts
+
+  rtc_init();                           // Configure and enable timer itself
+#ifndef SIMULATION
+  // Use an extended busy-wait as interrupt handlers may not yet be enabled.
+  // TODO The following is one full second, not the 10ms required
+  nsleep(1000000000);                   // Standard requires 10ms idle for reset
+#endif
+  morse_init();                         // LED goes BLACK
+#ifndef SIMULATION
+  puts("A2");                 // Blink A2 on LED at powerup
+#endif
+  tusb_init();
+  disk_init();
+#ifndef SIMULATION
+  // Mount root filesystem
+  mount((void*)(FLASHFS_START_ADDRESS+SPIFLASH_BASE), 0);
+  // Run startup program script
+  exec("HELLO");
+#endif
 }
 
 
@@ -803,7 +811,7 @@ void run_task(void(*task)(void), enum task_num num) {
   int mask = 1<<num;
   if(!(active_tasks & mask)) {
     active_tasks|=mask;
-    a2time_t starttime;
+    a2perf_t starttime;
     perfmon_start(&starttime);
     (*task)();
     task_runtime[num] += perfmon_end(starttime);

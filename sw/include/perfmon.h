@@ -36,6 +36,13 @@
 //#define ISR_TIME_TRACKING
 //#define ACCURATE_PERFMON
 //#define FAST_PERFMON
+//#define DISABLE_PERFMON
+
+#ifdef DISABLE_PERFMON
+typedef int a2perf_t;
+static inline void perfmon_start(a2perf_t *start) { (void)start; }
+static inline a2perf_t perfmon_end(a2perf_t start) { (void)start; return 0; }
+#else /* DISABLE_PERFMON */
 
 #if defined(ISR_TIME_TRACKING) && !defined(ACCURATE_PERFMON)
 #define ACCURATE_PERFMON
@@ -87,10 +94,10 @@ static inline a2perf_t perfmon_end(a2perf_t start) {
     a2perf_t end = ((activetime()-isr_runtime)-start);
     irq_setie(1);
     return end;
-  #else
+  #else /* ISR_TIME_TRACKING */
   #ifdef ACCURATE_PERFMON
     return (a2perf_t)(activetime()-start);
-  #else
+  #else /* ACCURATE_PERFMON */
     a2perf_t end;
     irq_setie(0);
     end.ms=system_ticks;
@@ -104,8 +111,9 @@ static inline a2perf_t perfmon_end(a2perf_t start) {
       end.ck = start.ck-end.ck;
     }
     return end;
-  #endif
-  #endif
+  #endif /* ACCURATE_PERFMON */
+  #endif /* ISR_TIME_TRACKING */
 }
 
+#endif /* DISABLE_PERFMON */
 #endif /* _PERFMON_H_ */
