@@ -1,4 +1,14 @@
-TOPLEVEL = tb
+#
+# Makefile - Part of a2fomu - Copyright (c) 2020-2021 Doug Eaton
+#
+# This file is part of a2fomu which is released under the two clause BSD
+# licence.  See file LICENSE in the project root directory or visit the
+# project at https://github.com/elecbrick/a2fomu for full license details.
+
+# Make sure the correct hardware version of Fomu is used - The evt board is
+# credit card sized and has different package and thus different pinout than
+# does the pvt board which is the one that fits inside the USB port.
+REVISION = pvt
 
 # Simulate with a CPU that includes explicit bypass in the register file.
 CPU = rtl/VexRiscv_bypass.v
@@ -15,7 +25,7 @@ EXTRA_LOGIC = rtl/verilog-6502/cpu.v rtl/verilog-6502/ALU.v
 
 # Verilog generation is handled by the project script.
 PROJECT_SCRIPT = ./a2fomu_build.py
-PROJECT_OPTIONS = --revision pvt --boot-source=rand
+PROJECT_OPTIONS = --revision=$(REVISION) --boot-source=rand
 
 GITHUB_ROOT = ../..
 ICEBRAM = $(GITHUB_ROOT)/icestorm/icebram/icebram
@@ -24,11 +34,12 @@ BIN2HEX = ../bin/bin2hex.py
 GENRUNTIME = ../bin/genruntime.py
 OBJDIR = ../sw/src/.obj
 BUILDDIR  = build/gateware
+RANDROM = $(BUILDDIR)/rand.init
 
 ifneq ("$(wildcard /etc/dpkg/origins/raspbian)","")
 $(info Raspberry Pi detected. Configuring Fomu EVT)
 PROJECT_SCRIPT = ./a2debug_build.py
-PROJECT_OPTIONS = --revision evt --wishbone-debug --boot-source=rand --gdb-debug=usb
+PROJECT_OPTIONS += --wishbone-debug --gdb-debug=usb
 endif
 
 # Default target: generate and flash project
@@ -42,20 +53,37 @@ debug: $(BUILDDIR)/a2debug.bin
 	@#while [ ! -e /dev/ttyACM0 ]; do echo -n "."; sleep 1; done;
 	@#exec screen /dev/ttyACM0
 
+$(BUILDDIR)/a2fomu.bin: $(BUILDDIR)/a2fomu_fw.bin $(OBJDIR)/runtime.bin
+	$(GENRUNTIME) -b $< -e $(OBJDIR)/runtime.bin -o $@
+
 $(BUILDDIR)/a2debug.bin: $(BUILDDIR)/a2debug_fw.bin $(OBJDIR)/runtime.bin
 	$(GENRUNTIME) -b $< -e $(OBJDIR)/runtime.bin -o $@
 
-$(BUILDDIR)/%.bin: $(BUILDDIR)/%.txt
+$(BUILDDIR)/a2fomu_fw.bin: $(BUILDDIR)/a2fomu_fw.txt
 	$(ICEPACK) $< $@
 
-$(BUILDDIR)/%_fw.txt: $(BUILDDIR)/%.txt $(BUILDDIR)/bios.init
-	$(ICEBRAM) -fv $(BUILDDIR)/mem.init $(BUILDDIR)/bios.init < $< >| $@
+$(BUILDDIR)/a2debug_fw.bin: $(BUILDDIR)/a2debug_fw.txt
+	$(ICEPACK) $< $@
+
+$(BUILDDIR)/a2fomu_fw.txt: $(BUILDDIR)/a2fomu.txt $(BUILDDIR)/bios.init $(RANDROM)
+	$(ICEBRAM) -fv $(RANDROM) $(BUILDDIR)/bios.init < $< >| $@
+
+$(BUILDDIR)/a2debug_fw.txt: $(BUILDDIR)/a2debug.txt $(BUILDDIR)/bios.init $(RANDROM)
+	$(ICEBRAM) -fv $(RANDROM) $(BUILDDIR)/bios.init < $< >| $@
+
+$(BUILDDIR)/a2fomu.txt: $(PROJECT_SCRIPT) $(wildcard rtl/*.py)
+	$(PROJECT_SCRIPT) $(PROJECT_OPTIONS)
+
+$(BUILDDIR)/a2debug.txt:
+	$(PROJECT_SCRIPT) $(PROJECT_OPTIONS)
 
 $(BUILDDIR)/%.init: $(OBJDIR)/%.bin
 	$(BIN2HEX) $< $@
 
-$(BUILDDIR)/a2debug.txt:
-	$(PROJECT_SCRIPT) $(PROJECT_OPTIONS)
+$(RANDROM):
+	$(PROJECT_SCRIPT) --export-random-rom-file $@
+
+#.PRECIOUS: build/gateware/a2fomu_fw.bin build/gateware/a2debug_fw.bin
 
 # Generate gateware with specific BIOS
 flash-%: TARGET = $(subst flash-,,$@)
@@ -73,6 +101,7 @@ TOOLS_DIR = $(GITHUB_ROOT)/fomu-toolchain-linux_x86_64-v1.5.5/bin
 SIM_LIBRARY = $(TOOLS_DIR)/../share/yosys/ice40/cells_sim.v
 
 # Variables requred by cocotb.
+TOPLEVEL = tb
 TOPLEVEL_LANG = verilog
 TESTBENCH = $(TOPLEVEL).v
 VERILOG_SOURCES = $(TESTBENCH) dut.v $(CPU) $(EXTRA_LOGIC) $(SIM_LIBRARY)
@@ -149,12 +178,6 @@ build/software/bios/bios.bin:
 
 $(BUILDDIR)/mem_2.init: $(BUILDDIR)/a2fomu.init
 	cp $(BUILDDIR)/a2fomu.init $(BUILDDIR)/mem_2.init
-
-$(BUILDDIR)/a2fomu.bin: $(BUILDDIR)/top.bin $(OBJDIR)/runtime.bin
-	$(GENRUNTIME) -b $< -e $(OBJDIR)/runtime.bin -o $@
-
-$(BUILDDIR)/top.bin: $(PROJECT_SCRIPT) $(wildcard rtl/*.py)
-	$(PROJECT_SCRIPT) $(PROJECT_OPTIONS)
 
 #$(BUILDDIR)/dut.v: $(PROJECT_SCRIPT) build/software/bios/bios.bin 
 
