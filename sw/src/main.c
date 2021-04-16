@@ -59,15 +59,18 @@ void reboot(void)
 {
   void _start(void);
   // Restart program preserving persistent memory. Reinitialize stack and vars.
+  #ifndef DEBUG
   _start();
+  #else
+  TU_BREAKPOINT();
+  #endif
   __builtin_unreachable();
 }
 
 #ifdef USING_ATTRIBUTE_INTERRUPT
 __attribute__ ((interrupt ("machine")))
 #endif
-void isr(void)
-{
+void isr(void) {
   unsigned int irqs;
   #ifdef ISR_TIME_TRACKING
   a2time_t isr_start = activetime();
@@ -782,7 +785,7 @@ void init(void) {
 #ifndef SIMULATION
   // Use an extended busy-wait as interrupt handlers may not yet be enabled.
   // TODO The following is one full second, not the 10ms required
-  nsleep(1000000000);                   // Standard requires 10ms idle for reset
+  nsleep(10000000);                     // Standard requires 10ms idle for reset
 #endif
   morse_init();                         // LED goes BLACK
 #ifndef SIMULATION
