@@ -24,8 +24,9 @@ EXTRA_LOGIC = rtl/verilog-6502/cpu.v rtl/verilog-6502/ALU.v
 #EXTRA_LOGIC += rtl/spiflash/AT25SF161.v
 
 # Verilog generation is handled by the project script.
-PROJECT_SCRIPT = ./a2fomu_build.py
+PROJECT_SCRIPT  = ./a2fomu_build.py
 PROJECT_OPTIONS = --revision=$(REVISION) --boot-source=rand
+DEBUG_OPTIONS  += --wishbone-debug --gdb-debug=usb
 
 GITHUB_ROOT = ../..
 ICEBRAM = $(GITHUB_ROOT)/icestorm/icebram/icebram
@@ -39,7 +40,6 @@ RANDROM = $(BUILDDIR)/rand.init
 ifneq ("$(wildcard /etc/dpkg/origins/raspbian)","")
 $(info Raspberry Pi detected. Configuring Fomu EVT)
 PROJECT_SCRIPT = ./a2debug_build.py
-PROJECT_OPTIONS += --wishbone-debug --gdb-debug=usb
 endif
 
 # Default target: generate and flash project
@@ -75,7 +75,7 @@ $(BUILDDIR)/a2fomu.txt: $(PROJECT_SCRIPT) $(wildcard rtl/*.py)
 	$(PROJECT_SCRIPT) $(PROJECT_OPTIONS)
 
 $(BUILDDIR)/a2debug.txt:
-	$(PROJECT_SCRIPT) $(PROJECT_OPTIONS)
+	$(PROJECT_SCRIPT) $(PROJECT_OPTIONS) $(DEBUG_OPTIONS) --name=a2debug
 
 $(BUILDDIR)/%.init: $(OBJDIR)/%.bin
 	$(BIN2HEX) $< $@
@@ -110,8 +110,10 @@ TEST_SCRIPT= bringup
 TARGET = a2fomu
 TARGET_DEPS = rtl/apple2.py
 
-export TARGET_CONFIG = configs/$(TARGET)_descriptors.json
+DEBUG_TARGET := $(filter debug,$(MAKECMDGOALS))
+
 export TARGET = a2fomu
+export TARGET_CONFIG = configs/$(TARGET)_descriptors.json
 
 # The default simulator iverilog is used unless a command like:
 # "make VERILATOR=1 sim" is given. This uses the Verilator simulator instead.
@@ -186,7 +188,7 @@ tb.v:	tb_wrapper.v
 
 dut.v:	$(PROJECT_SCRIPT) tb_wrapper.v $(TARGET_DEPS)
 	@# This dep causes double build => $(BUILDDIR)/dut.v
-	$(PROJECT_SCRIPT) $(PROJECT_OPTIONS) --sim
+	$(PROJECT_SCRIPT) $(PROJECT_OPTIONS) --sim --name dut
 	mv $(BUILDDIR)/dut.v .
 
 usb.vcd: dut.v

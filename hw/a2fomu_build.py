@@ -307,7 +307,7 @@ class BaseSoC(SoCCore, AutoDoc):
             self.integrated_sram_size = 0 # 0x8000,
         else:
             clk_freq = int(12e6)
-            self.submodules.crg = _CRG(platform)
+            self.submodules.crg = _CRG(platform, clk_freq)
 
         SoCCore.__init__(self, platform, clk_freq,
                 integrated_sram_size=self.integrated_sram_size, with_uart=False,
@@ -336,18 +336,17 @@ class BaseSoC(SoCCore, AutoDoc):
                 self.submodules.spibone = ClockDomainsRenamer("usb_12")(spibone.SpiWishboneBridge(spi_pads, wires=4))
                 self.add_wb_master(self.spibone.wishbone)
             if hasattr(self, "cpu") and not isinstance(self.cpu, CPUNone):
-                self.cpu.use_external_variant("rtl/VexRiscv_Fomu_Debug.v")
+                self.cpu.use_external_variant("rtl/VexRiscv_Fomu_NoMMU_Debug.v")
                 os.path.join(output_dir, "gateware")
-                self.register_mem("vexriscv_debug", 0xf00f0000, self.cpu.debug_bus, 0x100)
+                # This was needed for an earlier version of LiteX
+                #self.register_mem("vexriscv_debug", 0xf00f0000, self.cpu.debug_bus, 0x100)
         else:
             if hasattr(self, "cpu") and not isinstance(self.cpu, CPUNone):
                 #self.cpu.use_external_variant("rtl/VexRiscv_Fomu.v")
-                #self.cpu.use_external_variant("rtl/VexRiscv_Minimum.v")
-                #self.cpu.use_external_variant("/home/doug/git/VexRiscv-verilog/mmuf_i0_ncot.v")
                 self.cpu.use_external_variant("rtl/VexRiscv_Fomu_NoMMU.v")
 
-        # SPRAM- UP5K has single port RAM, might as well use it as SRAM to
-        # free up scarce block RAM.
+        # SPRAM- UP5K has four blocks of Single Port RAM (SPRAM). This is split
+        # evenly between the Risc-V and the 6502 for main memory, 64kB each.
         spram_size = 64*1024
         if not kwargs["sim"]:
             self.submodules.spram = up5kspram.Up5kSPRAM(size=spram_size)
@@ -360,11 +359,15 @@ class BaseSoC(SoCCore, AutoDoc):
         #self.submodules.messible = Messible()
 
         # Apple II specific modules here
-        a2mem = PDP_SPRAM(sim=kwargs["sim"])
-        self.submodules.a2mem = a2mem
         a2mem_size = 64*1024
+        if not kwargs["sim"]:
+            a2mem = PDP_SPRAM(sim=kwargs["sim"])
+        else:
+            self.submodules.spram = wishbone.SRAM(spram_size, read_only=False, init=[])
+        self.submodules.a2mem = a2mem
         self.register_mem("a2ram", self.mem_map["a2ram"], self.a2mem.bus, a2mem_size)
-        self.submodules.apple2 = Apple2(platform, a2mem)
+        print("=====================\n", gdb_debug, gdb_debug!=None, "\n=====================\n")
+        self.submodules.apple2 = Apple2(platform, a2mem, minimal=(gdb_debug!=None))
 
         if not kwargs["no_cpu"]:
             bios_size = 0x2000   # Fomu standard 8 Kb ROM
@@ -437,16 +440,18 @@ class BaseSoC(SoCCore, AutoDoc):
             platform.add_extension(TouchPads.touch_device)
             self.submodules.touch = TouchPads(platform.request("touch_pads"))
 
-        # Allow the user to reboot the ICE40.  Additionally, connect the CPU
-        # RESET line to a register that can be modified, to allow for
-        # us to debug programs even during reset.
-        #if not kwargs['sim']:
+        # Allow the user to reboot the ICE40.
         self.submodules.reboot = SBWarmBoot(self, warmboot_offsets)
-        #Doug - removed for PicoRV32
-        if hasattr(self, "cpu") and not isinstance(self.cpu, CPUNone):
-            self.cpu.cpu_params.update(
-                i_externalResetVector=self.reboot.addr.storage,
-            )
+        # If CPU has the debug option enabled, allow a register that changes the
+        # reset address that the CPU jumps to.
+        #if not kwargs['sim']:
+        if gdb_debug!=None and not isinstance(self.cpu, CPUNone):
+            try:
+                self.cpu.cpu_params.update(
+                    i_externalResetVector=self.reboot.addr.storage,
+                )
+            except:
+                None
 
         if not kwargs['no_rgb']:
             from rtl.sbled import SBLED
@@ -586,7 +591,10 @@ def main():
         help="build a2fomu for a particular hardware model"
     )
     parser.add_argument(
-        "--sim", help="build gateware optimized for simulation", action="store_true"
+        "--name", help="set base name of output files", default="a2fomu"
+    )
+    parser.add_argument(
+        "--sim", help="build gateware suitable for simulation environment", action="store_true"
     )
     parser.add_argument(
         "--bios", help="use specified file as a BIOS, rather than building one"
@@ -679,6 +687,7 @@ def main():
         platform = sim_Platform(revision=args.revision)
     else:
         platform = Platform(revision=args.revision)
+
     soc = BaseSoC(platform, cpu_type=cpu_type, cpu_variant=cpu_variant,
                             gdb_debug=args.gdb_debug, usb_wishbone=args.wishbone_debug,
                             boot_source=args.boot_source,
@@ -695,7 +704,7 @@ def main():
                       compile_software=compile_software, compile_gateware=compile_gateware)
     if compile_software:
         builder.software_packages = [
-            ("bios", os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "sw")))
+            ("all", os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "sw", "src")))
         ]
 
     if args.sim:
@@ -706,7 +715,7 @@ def main():
 """)
         return
 
-    vns = builder.build()
+    vns = builder.build(build_name=args.name)
     soc.do_exit(vns)
     lxsocdoc.generate_docs(soc, "build/documentation/", project_name="A2Fomu", author="Elecbrick")
 
@@ -716,9 +725,9 @@ def main():
 
         with open(os.path.join(output_dir, 'gateware', 'multiboot-header.bin'), 'rb') as multiboot_header_file:
             multiboot_header = multiboot_header_file.read()
-            with open(os.path.join(output_dir, 'gateware', 'top.bin'), 'rb') as top_file:
+            with open(os.path.join(output_dir, 'gateware', args.name+'.bin'), 'rb') as top_file:
                 top = top_file.read()
-                with open(os.path.join(output_dir, 'gateware', 'top-multiboot.bin'), 'wb') as top_multiboot_file:
+                with open(os.path.join(output_dir, 'gateware', args.name+'-multiboot.bin'), 'wb') as top_multiboot_file:
                     top_multiboot_file.write(multiboot_header)
                     top_multiboot_file.write(top)
 
