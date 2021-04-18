@@ -46,10 +46,10 @@
 #define RISCV_CSR_MCYCLE
 #endif
 
-#ifdef SIMULATION
+//#ifdef SIMULATION
 // Use shorter interval to test interrupts in simulation - 100 kHz tick (100us)
-#define RTC_FREQUENCY (1200000)
-#else
+//#define RTC_FREQUENCY (1200000)
+//#else
 #if CONFIG_CLOCK_FREQUENCY == 12000000
 // CPU and timer both in 12MHz clock domain. This gives us a 1ms jiffie clock.
 #define RTC_FREQUENCY (CONFIG_CLOCK_FREQUENCY)
@@ -63,7 +63,7 @@
 #error "Clock frequency does not correspond to known configuration"
 #endif /* 48MHz */
 #endif /* 12MHz */
-#endif /* SIMULATION */
+//#endif /* SIMULATION */
 
 
 volatile a2time_t system_ticks = 0;
@@ -97,12 +97,12 @@ void rtc_init(void)
 // or attributes to keep the compiler from optimizing this routine into a
 // constant.
 //int64_t __muldi3(int64_t, int64_t);
-//__attribute__((optimize("O1")))
+__attribute__((optimize("O0")))
 __attribute__((noinline,noclone))
 a2time_t nstoa2time(int ns) {
-  a2time_t time;
+  volatile a2time_t time;
   //time = __muldi3(ns,RTC_FREQUENCY);
-  time = ns*RTC_FREQUENCY;
+  time = (a2time_t)ns*RTC_FREQUENCY;
   time = time/1000000000LL;
   return time;
 }
@@ -120,7 +120,8 @@ unsigned int sleep(unsigned int s) {
 
 // Suspend task until the require time has passed
 // Parameter is time in milliseconds
-// Method: Use the jiffie clock, updated by ISR, effectively doing nothing.
+// Method: Use the jiffie clock, updated by ISR, effectively doing nothing in
+//   this task while allowing all other tasks to run.
 unsigned int msleep(unsigned int ms) {
   a2time_t end = rtc_read()+ms;
   while(rtc_read()<end) {
@@ -138,10 +139,15 @@ unsigned int msleep(unsigned int ms) {
 unsigned int nsleep(unsigned int ns) {
   // Approximate HZ with a compile time constant of 84 rather than 83.333
   a2time_t end = activetime()+nstoa2time(ns);
+  volatile a2time_t start, duration, now;
+  start=activetime();
+  duration=nstoa2time(ns);
   while(activetime()<end) {
-    ;
+    now=activetime();
   }
-  return 0;
+  (void)start;
+  (void)duration;
+  return now;
 }
 
 a2time_t activetime(void) {
