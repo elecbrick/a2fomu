@@ -10,6 +10,13 @@
 # does the pvt board which is the one that fits inside the USB port.
 REVISION = pvt
 
+TARGET = a2fomu
+PROJECT := $(TARGET)-$(REVISION)
+DEBUG_TARGET := $(filter debug,$(MAKECMDGOALS))
+ifneq ("",$(DEBUG_TARGET))
+    PROJECT := $(PROJECT)-debug
+endif
+
 # Simulate with a CPU that includes explicit bypass in the register file.
 CPU = rtl/VexRiscv_bypass.v
 # The standard Fomu CPUs and the simplified A2Fomu one all suffer from a
@@ -25,7 +32,7 @@ EXTRA_LOGIC = rtl/verilog-6502/cpu.v rtl/verilog-6502/ALU.v
 
 # Verilog generation is handled by the project script.
 PROJECT_SCRIPT  = ./a2fomu_build.py
-PROJECT_OPTIONS = --revision=$(REVISION) --boot-source=rand
+PROJECT_OPTIONS = --revision=$(REVISION) --boot-source=rand --name=$(PROJECT)
 DEBUG_OPTIONS  += --wishbone-debug --gdb-debug=usb
 
 GITHUB_ROOT = ../..
@@ -37,14 +44,14 @@ OBJDIR = ../sw/src/.obj
 BUILDDIR  = build/gateware
 RANDROM = $(BUILDDIR)/rand.init
 
-ifneq ("$(wildcard /etc/dpkg/origins/raspbian)","")
-$(info Raspberry Pi detected. Configuring Fomu EVT)
-PROJECT_SCRIPT = ./a2debug_build.py
-endif
+#ifneq ("$(wildcard /etc/dpkg/origins/raspbian)","")
+#$(info Raspberry Pi detected. Configuring Fomu EVT)
+#PROJECT_SCRIPT = ./a2debug_build.py
+#endif
 
 # Default target: generate and flash project
-flash:	$(BUILDDIR)/a2fomu.bin
-	-dfu-util -D $(BUILDDIR)/a2fomu.bin
+flash:	$(BUILDDIR)/$(PROJECT).bin
+	-dfu-util -D $(BUILDDIR)/$(PROJECT).bin
 	while [ ! -e /dev/ttyACM0 ]; do echo -n "."; sleep 1; done;
 	exec screen /dev/ttyACM0
 
@@ -53,29 +60,26 @@ debug: $(BUILDDIR)/a2debug.bin
 	@#while [ ! -e /dev/ttyACM0 ]; do echo -n "."; sleep 1; done;
 	@#exec screen /dev/ttyACM0
 
-$(BUILDDIR)/a2fomu.bin: $(BUILDDIR)/a2fomu_fw.bin $(OBJDIR)/runtime.bin
+$(BUILDDIR)/$(PROJECT).bin: $(BUILDDIR)/$(PROJECT)_fw.bin $(OBJDIR)/runtime.bin
 	$(GENRUNTIME) -b $< -e $(OBJDIR)/runtime.bin -o $@
 
-$(BUILDDIR)/a2debug.bin: $(BUILDDIR)/a2debug_fw.bin $(OBJDIR)/runtime.bin
-	$(GENRUNTIME) -b $< -e $(OBJDIR)/runtime.bin -o $@
-
-$(BUILDDIR)/a2fomu_fw.bin: $(BUILDDIR)/a2fomu_fw.txt
+$(BUILDDIR)/$(PROJECT)_fw.bin: $(BUILDDIR)/$(PROJECT)_fw.txt
 	$(ICEPACK) $< $@
 
-$(BUILDDIR)/a2debug_fw.bin: $(BUILDDIR)/a2debug_fw.txt
-	$(ICEPACK) $< $@
-
-$(BUILDDIR)/a2fomu_fw.txt: $(BUILDDIR)/a2fomu.txt $(BUILDDIR)/bios.init $(RANDROM)
+$(BUILDDIR)/$(PROJECT)_fw.txt: $(BUILDDIR)/$(PROJECT).txt $(BUILDDIR)/bios.init $(RANDROM)
 	$(ICEBRAM) -fv $(RANDROM) $(BUILDDIR)/bios.init < $< >| $@
 
-$(BUILDDIR)/a2debug_fw.txt: $(BUILDDIR)/a2debug.txt $(BUILDDIR)/bios.init $(RANDROM)
-	$(ICEBRAM) -fv $(RANDROM) $(BUILDDIR)/bios.init < $< >| $@
-
-$(BUILDDIR)/a2fomu.txt: $(PROJECT_SCRIPT) $(wildcard rtl/*.py)
+$(BUILDDIR)/$(PROJECT).txt: $(PROJECT_SCRIPT) $(wildcard rtl/*.py)
 	$(PROJECT_SCRIPT) $(PROJECT_OPTIONS)
 
-$(BUILDDIR)/a2debug.txt:
-	$(PROJECT_SCRIPT) $(PROJECT_OPTIONS) $(DEBUG_OPTIONS) --name=a2debug
+#$(BUILDDIR)/a2debug.bin: $(BUILDDIR)/a2debug_fw.bin $(OBJDIR)/runtime.bin
+#	$(GENRUNTIME) -b $< -e $(OBJDIR)/runtime.bin -o $@
+#$(BUILDDIR)/a2debug_fw.bin: $(BUILDDIR)/a2debug_fw.txt
+#	$(ICEPACK) $< $@
+#$(BUILDDIR)/a2debug_fw.txt: $(BUILDDIR)/a2debug.txt $(BUILDDIR)/bios.init $(RANDROM)
+#	$(ICEBRAM) -fv $(RANDROM) $(BUILDDIR)/bios.init < $< >| $@
+#$(BUILDDIR)/a2debug.txt:
+#	$(PROJECT_SCRIPT) $(PROJECT_OPTIONS) $(DEBUG_OPTIONS) --name=a2debug
 
 $(BUILDDIR)/%.init: $(OBJDIR)/%.bin
 	$(BIN2HEX) $< $@
@@ -83,10 +87,10 @@ $(BUILDDIR)/%.init: $(OBJDIR)/%.bin
 $(RANDROM):
 	$(PROJECT_SCRIPT) --export-random-rom-file $@
 
-#.PRECIOUS: build/gateware/a2fomu_fw.bin build/gateware/a2debug_fw.bin
+#.PRECIOUS: build/gateware/$(PROJECT)_fw.bin build/gateware/a2debug_fw.bin
 
 # Generate gateware with specific BIOS
-flash-%: TARGET = $(subst flash-,,$@)
+flash-%: PROJECT = $(subst flash-,,$@)
 flash-%:
 	make ../sw/$(TARGET)/a2$(TARGET).init
 	icebram rand8k.rom ../sw/$(TARGET)/a2$(TARGET).init < $(BUILDDIR)/top.txt > $(BUILDDIR)/$(TARGET).txt
@@ -107,10 +111,7 @@ TESTBENCH = $(TOPLEVEL).v
 VERILOG_SOURCES = $(TESTBENCH) dut.v $(CPU) $(EXTRA_LOGIC) $(SIM_LIBRARY)
 
 TEST_SCRIPT= bringup
-TARGET = a2fomu
 TARGET_DEPS = rtl/apple2.py
-
-DEBUG_TARGET := $(filter debug,$(MAKECMDGOALS))
 
 export TARGET = a2fomu
 export TARGET_CONFIG = configs/$(TARGET)_descriptors.json
