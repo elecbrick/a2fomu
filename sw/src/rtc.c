@@ -97,13 +97,11 @@ void rtc_init(void)
 // or attributes to keep the compiler from optimizing this routine into a
 // constant.
 //int64_t __muldi3(int64_t, int64_t);
-__attribute__((optimize("O0")))
-__attribute__((noinline,noclone))
+//__attribute__((optimize("O0")))
+//__attribute__((noinline,noclone))
 a2time_t nstoa2time(int ns) {
   volatile a2time_t time;
-  //time = __muldi3(ns,RTC_FREQUENCY);
-  time = (a2time_t)ns*RTC_FREQUENCY;
-  time = time/1000000000LL;
+  time = ((a2time_t)ns*RTC_FREQUENCY)/1000000000LL;
   return time;
 }
 
@@ -139,15 +137,10 @@ unsigned int msleep(unsigned int ms) {
 unsigned int nsleep(unsigned int ns) {
   // Approximate HZ with a compile time constant of 84 rather than 83.333
   a2time_t end = activetime()+nstoa2time(ns);
-  volatile a2time_t start, duration, now;
-  start=activetime();
-  duration=nstoa2time(ns);
   while(activetime()<end) {
-    now=activetime();
+    ;
   }
-  (void)start;
-  (void)duration;
-  return now;
+  return 0;
 }
 
 a2time_t activetime(void) {
