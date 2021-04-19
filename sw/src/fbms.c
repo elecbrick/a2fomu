@@ -76,6 +76,7 @@ int fbms_main(void) {
   // CONFIG_CSR_DATA_WIDTH is 8 in the failsafe gateware but 32 in A2Fomu.
   // Helper functions compile with the configured width so cannot be used.
   // Write a 32-bit value to the 32-bit r/w reboot address register.
+#ifdef CSR_REBOOT_ADDR_ADDR
   write_reg(CSR_REBOOT_ADDR_ADDR, REGISTER_WIDTH_TEST_VALUE);
   // And read back either an 8-bit or 32-bit value.
   int value = read_reg(CSR_REBOOT_ADDR_ADDR);
@@ -86,6 +87,7 @@ int fbms_main(void) {
     // Target gateware detected
     write_reg(CSR_RGB_RAW_ADDR, RGB_RAW_CYAN);
   }
+#endif
   // Find the first valid gateware after the failsafe one and load it.
   for(image_index=1; image_index<4; image_index++) {
     uint32_t addr = htonl(*(uint32_t*)(IMAGE0_LOCATION+(image_index*32)));
