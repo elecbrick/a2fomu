@@ -8,14 +8,24 @@
 # Make sure the correct hardware version of Fomu is used - The evt board is
 # credit card sized and has different package and thus different pinout than
 # does the pvt board which is the one that fits inside the USB port.
-REVISION = pvt
 
 TARGET = a2fomu
-PROJECT := $(TARGET)-$(REVISION)
+REVISION = pvt
+
+# Verilog generation is handled by the project script.
+PROJECT_SCRIPT  = ./a2fomu_build.py
+PROJECT_OPTIONS = --revision=$(REVISION) --boot-source=rand --name=$(PROJECT)
+DEBUG_OPTIONS  += --wishbone-debug --gdb-debug=usb
+
+PROJECT := $(TARGET)_$(REVISION)
 DEBUG_TARGET := $(filter debug,$(MAKECMDGOALS))
-ifneq ("",$(DEBUG_TARGET))
-    PROJECT := $(PROJECT)-debug
+ifeq ("debug","$(DEBUG_TARGET)")
+    PROJECT := $(PROJECT)_debug
+    PROJECT_OPTIONS += $(DEBUG_OPTIONS)
 endif
+
+$(info TARGET "$(DEBUG_TARGET)")
+$(info PROJECT $(PROJECT))
 
 # Simulate with a CPU that includes explicit bypass in the register file.
 CPU = rtl/VexRiscv_bypass.v
@@ -30,19 +40,15 @@ CPU = rtl/VexRiscv_bypass.v
 EXTRA_LOGIC = rtl/verilog-6502/cpu.v rtl/verilog-6502/ALU.v
 #EXTRA_LOGIC += rtl/spiflash/AT25SF161.v
 
-# Verilog generation is handled by the project script.
-PROJECT_SCRIPT  = ./a2fomu_build.py
-PROJECT_OPTIONS = --revision=$(REVISION) --boot-source=rand --name=$(PROJECT)
-DEBUG_OPTIONS  += --wishbone-debug --gdb-debug=usb
-
 GITHUB_ROOT = ../..
-ICEBRAM = $(GITHUB_ROOT)/icestorm/icebram/icebram
-ICEPACK = icepack
-BIN2HEX = ../bin/bin2hex.py
+ICEBRAM  = $(GITHUB_ROOT)/icestorm/icebram/icebram
+ICEPACK  = icepack
+BIN2HEX  = ../bin/bin2hex.py
 GENRUNTIME = ../bin/genruntime.py
-OBJDIR = ../sw/src/.obj
-BUILDDIR  = build/gateware
-RANDROM = $(BUILDDIR)/rand.init
+SRCDIR   = ../sw/src
+OBJDIR   = $(SRCDIR)/.obj
+BUILDDIR = build/gateware
+RANDROM  = $(BUILDDIR)/rand.init
 
 #ifneq ("$(wildcard /etc/dpkg/origins/raspbian)","")
 #$(info Raspberry Pi detected. Configuring Fomu EVT)
@@ -50,12 +56,15 @@ RANDROM = $(BUILDDIR)/rand.init
 #endif
 
 # Default target: generate and flash project
+$(PROJECT): $(BUILDDIR)/$(PROJECT).bin
+
+# Default target: generate and flash project
 flash:	$(BUILDDIR)/$(PROJECT).bin
 	-dfu-util -D $(BUILDDIR)/$(PROJECT).bin
 	while [ ! -e /dev/ttyACM0 ]; do echo -n "."; sleep 1; done;
 	exec screen /dev/ttyACM0
 
-debug: $(BUILDDIR)/a2debug.bin
+debug: $(BUILDDIR)/$(PROJECT).bin
 	-dfu-util -D $<
 	@#while [ ! -e /dev/ttyACM0 ]; do echo -n "."; sleep 1; done;
 	@#exec screen /dev/ttyACM0
@@ -83,6 +92,9 @@ $(BUILDDIR)/$(PROJECT).txt: $(PROJECT_SCRIPT) $(wildcard rtl/*.py)
 
 $(BUILDDIR)/%.init: $(OBJDIR)/%.bin
 	$(BIN2HEX) $< $@
+
+$(OBJDIR)/%.bin:
+	cd $(SRCDIR) && $(MAKE)
 
 $(RANDROM):
 	$(PROJECT_SCRIPT) --export-random-rom-file $@
